@@ -76,7 +76,7 @@ struct EngineSmoke {
                                                   drawSpeed: 1.1, fuseDelay: 1.8))
         precondition(tuned.lives == 5 && tuned.enemies.count == 2)
         precondition(abs(hypot(tuned.enemies[0].velocity.x, tuned.enemies[0].velocity.y)
-                         - defaultVelocity * 1.5) < 0.0001)
+                         - 7.1 * 1.5) < 0.0001)
         let snapshot = try! JSONEncoder().encode(tuned)
         let recovered = try! JSONDecoder().decode(DivideEngine.self, from: snapshot)
         precondition(recovered.validSnapshot && recovered.lives == tuned.lives)
