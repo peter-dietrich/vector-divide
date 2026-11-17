@@ -1,0 +1,78 @@
+// !$*UTF8*$!
+{
+ archiveVersion = 1;
+ classes = {};
+ objectVersion = 56;
+ objects = {
+  B00000000000000000000001 = { isa = PBXBuildFile; fileRef = B00000000000000000000004; };
+  B00000000000000000000002 = { isa = PBXBuildFile; fileRef = B00000000000000000000005; };
+  B00000000000000000000003 = { isa = PBXBuildFile; fileRef = B00000000000000000000006; };
+  B00000000000000000000004 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/VectorDivideApp.swift; sourceTree = "<group>"; };
+  B00000000000000000000005 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideEngine.swift; sourceTree = "<group>"; };
+  B00000000000000000000006 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideCanvas.swift; sourceTree = "<group>"; };
+  B00000000000000000000007 = { isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VectorDivide.app; sourceTree = BUILT_PRODUCTS_DIR; };
+  B00000000000000000000008 = { isa = PBXGroup; children = (B00000000000000000000004, B00000000000000000000005, B00000000000000000000006, B00000000000000000000009); sourceTree = "<group>"; };
+  B00000000000000000000009 = { isa = PBXGroup; children = (B00000000000000000000007); name = Products; sourceTree = "<group>"; };
+  B0000000000000000000000A = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (B00000000000000000000001, B00000000000000000000002, B00000000000000000000003); runOnlyForDeploymentPostprocessing = 0; };
+  B0000000000000000000000B = { isa = PBXNativeTarget; buildConfigurationList = B0000000000000000000000E; buildPhases = (B0000000000000000000000A); buildRules = (); dependencies = (); name = VectorDivide; productName = VectorDivide; productReference = B00000000000000000000007; productType = "com.apple.product-type.application"; };
+  B0000000000000000000000C = {
+   isa = PBXProject;
+   attributes = { LastUpgradeCheck = 1600; TargetAttributes = { B0000000000000000000000B = { CreatedOnToolsVersion = 16.0; }; }; };
+   buildConfigurationList = B0000000000000000000000F;
+   compatibilityVersion = "Xcode 14.0";
+   developmentRegion = en;
+   hasScannedForEncodings = 0;
+   knownRegions = (en, Base);
+   mainGroup = B00000000000000000000008;
+   productRefGroup = B00000000000000000000009;
+   projectDirPath = "";
+   projectRoot = "";
+   targets = (B0000000000000000000000B);
+  };
+  B0000000000000000000000E = { isa = XCConfigurationList; buildConfigurations = (B00000000000000000000010, B00000000000000000000011); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+  B0000000000000000000000F = { isa = XCConfigurationList; buildConfigurations = (B00000000000000000000012, B00000000000000000000013); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+  B00000000000000000000010 = { isa = XCBuildConfiguration; buildSettings = {
+   CODE_SIGNING_ALLOWED = NO;
+   CURRENT_PROJECT_VERSION = 1;
+   GENERATE_INFOPLIST_FILE = YES;
+   INFOPLIST_KEY_CFBundleDisplayName = "Vector Divide";
+   INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
+   INFOPLIST_KEY_NSHighResolutionCapable = YES;
+   MACOSX_DEPLOYMENT_TARGET = 14.0;
+   MARKETING_VERSION = 0.1.0;
+   PRODUCT_BUNDLE_IDENTIFIER = "io.vectordivide.game";
+   PRODUCT_NAME = "$(TARGET_NAME)";
+   SUPPORTED_PLATFORMS = macosx;
+   SWIFT_VERSION = 5.0;
+  }; name = Debug; };
+  B00000000000000000000011 = { isa = XCBuildConfiguration; buildSettings = {
+   CODE_SIGNING_ALLOWED = NO;
+   CURRENT_PROJECT_VERSION = 1;
+   GENERATE_INFOPLIST_FILE = YES;
+   INFOPLIST_KEY_CFBundleDisplayName = "Vector Divide";
+   INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
+   INFOPLIST_KEY_NSHighResolutionCapable = YES;
+   MACOSX_DEPLOYMENT_TARGET = 14.0;
+   MARKETING_VERSION = 0.1.0;
+   PRODUCT_BUNDLE_IDENTIFIER = "io.vectordivide.game";
+   PRODUCT_NAME = "$(TARGET_NAME)";
+   SUPPORTED_PLATFORMS = macosx;
+   SWIFT_OPTIMIZATION_LEVEL = "-O";
+   SWIFT_VERSION = 5.0;
+  }; name = Release; };
+  B00000000000000000000012 = { isa = XCBuildConfiguration; buildSettings = {
+   CODE_SIGNING_ALLOWED = NO;
+   SDKROOT = macosx;
+   MACOSX_DEPLOYMENT_TARGET = 14.0;
+   SWIFT_VERSION = 5.0;
+  }; name = Debug; };
+  B00000000000000000000013 = { isa = XCBuildConfiguration; buildSettings = {
+   CODE_SIGNING_ALLOWED = NO;
+   SDKROOT = macosx;
+   MACOSX_DEPLOYMENT_TARGET = 14.0;
+   SWIFT_OPTIMIZATION_LEVEL = "-O";
+   SWIFT_VERSION = 5.0;
+  }; name = Release; };
+ };
+ rootObject = B0000000000000000000000C;
+}
