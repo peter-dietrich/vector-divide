@@ -59,7 +59,7 @@ struct DivideSpark: Codable {
 /// Tunable arcade rules. Defaults retain the game's classic 75% territory objective.
 struct DivideRules: Codable, Equatable {
     var extraLives = 0
-    var enemySpeed = 1.0
+    var enemySpeed = 2.5
     var extraEnemies = 0
     var sparkSpeed = 1.0
     var targetPercent = 75.0
@@ -69,7 +69,7 @@ struct DivideRules: Codable, Equatable {
     func validated() -> DivideRules {
         var copy = self
         copy.extraLives = max(-2, min(6, extraLives))
-        copy.enemySpeed = enemySpeed.isFinite ? max(0.5, min(2.5, enemySpeed)) : 1
+        copy.enemySpeed = enemySpeed.isFinite ? max(0.5, min(4.0, enemySpeed)) : 2.5
         copy.extraEnemies = max(0, min(3, extraEnemies))
         copy.sparkSpeed = sparkSpeed.isFinite ? max(0.5, min(2.5, sparkSpeed)) : 1
         copy.targetPercent = targetPercent.isFinite ? max(50, min(95, targetPercent)) : 75
@@ -183,7 +183,8 @@ struct DivideEngine: Codable {
             let x = Double(Self.columns) * (0.20 + Double(index % 5) * 0.15)
             let y = Double(Self.rows) * (0.30 + Double(index % 3) * 0.18)
             let angle = (0.68 + Double(index) * 1.88)
-            let speed = (7.1 + Double(level - 1) * 0.42) * difficulty.speed * rules.enemySpeed
+            // Standard Veteran now starts at 2.5× the previous movement rate.
+        let speed = (7.1 + Double(level - 1) * 0.42) * difficulty.speed * rules.enemySpeed
             return DivideEnemy(position: DivideVector(x: x, y: y),
                                velocity: DivideVector(x: cos(angle) * speed, y: sin(angle) * speed),
                                spin: Double(index))
