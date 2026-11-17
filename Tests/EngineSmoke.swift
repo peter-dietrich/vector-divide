@@ -64,6 +64,31 @@ struct EngineSmoke {
         let beforeFuse = fuseTest.lives
         for _ in 0..<250 { fuseTest.tick(1.0 / 60.0, direction: nil, request: nil) }
         precondition(fuseTest.lives == beforeFuse - 1, "Fuse should terminate a stalled line")
-        print("PASS — Vector Divide: capture, enemy regions, input-drawn lines, level progression, fuse, score, pause")
+        // v0.2.0: initial movement is faster, configurable, and Codable for saves.
+        let baseline = DivideEngine()
+        var normal = baseline
+        normal.start(.veteran)
+        let defaultVelocity = hypot(normal.enemies[0].velocity.x, normal.enemies[0].velocity.y)
+        precondition(abs(defaultVelocity - 7.1) < 0.0001, "Starting enemy speed must be 7.1")
+        var tuned = DivideEngine()
+        tuned.start(.veteran, rules: DivideRules(extraLives: 2, enemySpeed: 1.5, extraEnemies: 1,
+                                                  sparkSpeed: 1.2, targetPercent: 65,
+                                                  drawSpeed: 1.1, fuseDelay: 1.8))
+        precondition(tuned.lives == 5 && tuned.enemies.count == 2)
+        precondition(abs(hypot(tuned.enemies[0].velocity.x, tuned.enemies[0].velocity.y)
+                         - defaultVelocity * 1.5) < 0.0001)
+        let snapshot = try! JSONEncoder().encode(tuned)
+        let recovered = try! JSONDecoder().decode(DivideEngine.self, from: snapshot)
+        precondition(recovered.validSnapshot && recovered.lives == tuned.lives)
+        precondition(recovered.rules.targetPercent == 65 && recovered.enemies.count == 2)
+        precondition(recovered.phase == .playing)
+        // Invalid imported preferences should be clamped to safe gameplay bounds.
+        let wild = DivideRules(extraLives: 100, enemySpeed: 500,
+                               extraEnemies: 99, sparkSpeed: -40,
+                               targetPercent: 150, drawSpeed: 0.01, fuseDelay: -3)
+        let validated = wild.validated()
+        precondition(validated.extraLives == 6 && validated.enemySpeed == 2.5)
+        precondition(validated.targetPercent == 95 && validated.fuseDelay == 0.4)
+        print("PASS — Vector Divide: capture, enemies, levels, fuse, Codable saves, custom rules, speed")
     }
 }
