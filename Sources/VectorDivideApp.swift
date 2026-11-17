@@ -159,7 +159,7 @@ struct DivideWindow: View {
                 }
                 .labelsHidden()
                 .frame(width: 128)
-                .onChange(of: session.difficulty) { _ in session.newGame() }
+                // The selected difficulty takes effect on New Game.
                 Button { session.pauseOrResume() } label: {
                     Label(session.engine.phase == .paused ? "Resume" : "Pause",
                           systemImage: session.engine.phase == .paused ? "play.fill" : "pause.fill")
@@ -304,7 +304,7 @@ struct DivideWindow: View {
                     Rectangle().fill(cyan).frame(width: bar.size.width * min(1, session.engine.percentClaimed / 100))
                     Rectangle().fill(amber.opacity(0.7))
                         .frame(width: 2)
-                        .offset(x: bar.size.width * session.engine.rules.targetPercent / 100.0)
+                        .offset(x: bar.size.width * CGFloat(session.engine.rules.targetPercent / 100.0))
                 }
             }
             .frame(height: 9)
@@ -356,7 +356,7 @@ struct DivideWindow: View {
                 Text("No recorded scores yet. Finish a game to enter your initials.")
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(Array(session.records.enumerated()), id: \.element.id) { offset, record in
+                ForEach(Array(session.records.enumerated()), id: \.offset) { offset, record in
                     HStack {
                         Text(String(format: "%02d", offset + 1)).frame(width: 35, alignment: .leading)
                         Text(record.initials).frame(width: 50)
