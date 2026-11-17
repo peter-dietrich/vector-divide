@@ -18,8 +18,10 @@ struct VectorDivideApp: App {
 final class DivideSession: ObservableObject {
     @Published var redraw = 0
     @Published var difficulty: DivideDifficulty = .veteran
-    @Published var bestScore: Int = UserDefaults.standard.integer(forKey: "VectorDivide.HighScore.v1")
-    @Published var bestInitials: String = UserDefaults.standard.string(forKey: "VectorDivide.Initials.v1") ?? "---"
+    @Published var records = DivideStore.records()
+    @Published var customRules: DivideRules? = nil
+    var bestScore: Int { records.first?.score ?? 0 }
+    var bestInitials: String { records.first?.initials ?? "---" }
     @Published var askInitials = false
     @Published var initialsDraft = ""
 
@@ -28,6 +30,7 @@ final class DivideSession: ObservableObject {
     private var shiftHeld = false
     private var lastTime = Date()
     private var promptedForRecord = false
+    @Published var pendingMessage: String? = nil
 
     private var direction: DivideDirection? {
         // Arrow keys and WASD, using native macOS key codes.
@@ -61,13 +64,33 @@ final class DivideSession: ObservableObject {
 
     func newGame() {
         keys.removeAll()
-        engine.start(difficulty)
+        engine.start(difficulty, rules: customRules ?? DivideRules())
         promptedForRecord = false
         lastTime = Date()
         redraw &+= 1
     }
 
     func pauseOrResume() { engine.togglePause(); redraw &+= 1 }
+    func showPauseForDialog() {
+        if engine.phase == .playing { engine.togglePause() }
+        redraw &+= 1
+    }
+    func loadGame(_ save: DivideSave) {
+        guard save.snapshot.validSnapshot else { return }
+        engine = save.snapshot
+        difficulty = engine.difficulty
+        customRules = engine.rules.isDefault ? nil : engine.rules
+        if engine.phase == .playing { engine.togglePause() }
+        promptedForRecord = false
+        keys.removeAll()
+        shiftHeld = false
+        lastTime = Date()
+        redraw &+= 1
+    }
+    func applyRules(_ rules: DivideRules?) {
+        customRules = rules?.validated()
+        newGame()
+    }
     func nextLevel() { engine.nextLevel(); redraw &+= 1 }
 
     func tick() {
@@ -78,7 +101,7 @@ final class DivideSession: ObservableObject {
         let request: DivideDrawMode? = shiftHeld ? .slow : (keys.contains(49) ? .fast : nil)
         engine.tick(dt, direction: direction, request: request)
         redraw &+= 1
-        if engine.phase == .gameOver, engine.score > bestScore, !promptedForRecord {
+        if engine.phase == .gameOver, DivideStore.qualifies(engine.score), !promptedForRecord {
             promptedForRecord = true
             initialsDraft = ""
             askInitials = true
@@ -87,16 +110,18 @@ final class DivideSession: ObservableObject {
 
     func recordInitials() {
         let entered = String(initialsDraft.uppercased().filter { $0.isLetter }.prefix(3))
-        bestScore = engine.score
-        bestInitials = entered.isEmpty ? "---" : entered
-        UserDefaults.standard.set(bestScore, forKey: "VectorDivide.HighScore.v1")
-        UserDefaults.standard.set(bestInitials, forKey: "VectorDivide.Initials.v1")
+        DivideStore.submit(score: engine.score, level: engine.level,
+                           difficulty: engine.difficulty, initials: entered)
+        records = DivideStore.records()
         askInitials = false
     }
 }
 
 struct DivideWindow: View {
     @StateObject private var session = DivideSession()
+    @State private var showRecords = false
+    @State private var showCustom = false
+    @State private var showSaves = false
     private let heartbeat = Timer.publish(every: 1.0 / 60.0, on: .main, in: .common).autoconnect()
     private let cyan = Color(red: 0.30, green: 0.92, blue: 0.98)
     private let amber = Color(red: 1, green: 0.71, blue: 0.28)
@@ -140,6 +165,22 @@ struct DivideWindow: View {
                           systemImage: session.engine.phase == .paused ? "play.fill" : "pause.fill")
                 }
                 .disabled(session.engine.phase != .playing && session.engine.phase != .paused)
+                Button { session.showPauseForDialog(); showRecords = true } label: {
+                    Label("Scores", systemImage: "trophy")
+                }
+                Button { session.showPauseForDialog(); showCustom = true } label: {
+                    Label("Custom", systemImage: "slider.horizontal.3")
+                }
+                Button {
+                    if DivideStore.save(session.engine, name: "") {
+                        session.pendingMessage = "Game saved locally. Open Load to resume."
+                    } else {
+                        session.pendingMessage = "Start a game before saving."
+                    }
+                } label: { Label("Save", systemImage: "square.and.arrow.down") }
+                Button { session.showPauseForDialog(); showSaves = true } label: {
+                    Label("Load", systemImage: "folder")
+                }
                 Button { session.newGame() } label: {
                     Label("New Game", systemImage: "arrow.clockwise")
                 }
@@ -184,13 +225,22 @@ struct DivideWindow: View {
         .background(Color(red: 0.025, green: 0.035, blue: 0.065))
         .onReceive(heartbeat) { _ in session.tick() }
         .sheet(isPresented: $session.askInitials) { initialsSheet }
+        .sheet(isPresented: $showRecords) { recordsSheet }
+        .sheet(isPresented: $showCustom) { customSheet }
+        .sheet(isPresented: $showSaves) { savesSheet }
+        .alert("VECTOR DIVIDE", isPresented: Binding(
+            get: { session.pendingMessage != nil },
+            set: { if !$0 { session.pendingMessage = nil } }
+        )) { Button("OK", role: .cancel) { session.pendingMessage = nil } } message: {
+            Text(session.pendingMessage ?? "")
+        }
     }
 
     @ViewBuilder
     private var statusOverlay: some View {
         switch session.engine.phase {
         case .ready:
-            statusCard("VECTOR DIVIDE", detail: "CLAIM 75% OF THE FIELD", instruction: "PRESS RETURN TO PLAY")
+            statusCard("VECTOR DIVIDE", detail: "CLAIM YOUR TARGET TERRITORY", instruction: "PRESS RETURN TO PLAY")
         case .paused:
             statusCard("PAUSED", detail: "THE GRID IS HOLDING", instruction: "PRESS P OR RETURN TO RESUME")
         case .levelClear:
@@ -254,11 +304,11 @@ struct DivideWindow: View {
                     Rectangle().fill(cyan).frame(width: bar.size.width * min(1, session.engine.percentClaimed / 100))
                     Rectangle().fill(amber.opacity(0.7))
                         .frame(width: 2)
-                        .offset(x: bar.size.width * 0.75)
+                        .offset(x: bar.size.width * session.engine.rules.targetPercent / 100.0)
                 }
             }
             .frame(height: 9)
-            Text("TARGET  75.0%")
+            Text(String(format: "TARGET  %.1f%%", session.engine.rules.targetPercent))
                 .font(.system(size: 11, weight: .semibold, design: .monospaced))
                 .foregroundStyle(amber)
             Divider().overlay(cyan.opacity(0.2))
@@ -296,6 +346,45 @@ struct DivideWindow: View {
                 .foregroundStyle(.white.opacity(0.5))
             Text(value).font(.system(size: 25, weight: .black, design: .monospaced))
                 .foregroundStyle(.white)
+        }
+    }
+
+    private var recordsSheet: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("TOP TEN / VECTOR DIVIDE").font(.system(size: 23, weight: .black, design: .monospaced))
+            if session.records.isEmpty {
+                Text("No recorded scores yet. Finish a game to enter your initials.")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(Array(session.records.enumerated()), id: \.element.id) { offset, record in
+                    HStack {
+                        Text(String(format: "%02d", offset + 1)).frame(width: 35, alignment: .leading)
+                        Text(record.initials).frame(width: 50)
+                        Text(String(format: "%07d", record.score)).frame(width: 100, alignment: .trailing)
+                        Text("LV \(record.level)").frame(width: 65, alignment: .trailing)
+                        Text(record.difficulty).foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                }
+            }
+            HStack { Spacer(); Button("Close") { showRecords = false } }
+        }
+        .padding(24).frame(width: 570)
+        .preferredColorScheme(.dark)
+    }
+
+    private var customSheet: some View {
+        DivideCustomSheet(initial: session.customRules ?? DivideRules()) { rules in
+            session.applyRules(rules)
+            showCustom = false
+        }
+    }
+
+    private var savesSheet: some View {
+        DivideSavesSheet { save in
+            session.loadGame(save)
+            showSaves = false
         }
     }
 
@@ -350,5 +439,127 @@ private final class DivideKeyboardView: NSView {
                 self.window?.makeFirstResponder(self)
             }
         }
+    }
+}
+
+private struct DivideCustomSheet: View {
+    let initial: DivideRules
+    let apply: (DivideRules?) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var rules = DivideRules()
+    @State private var savedPresets: [DividePreset] = []
+    @State private var selected: UUID?
+    @State private var presetName = "My Divide"
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 13) {
+            Text("CUSTOM GAME SETTINGS")
+                .font(.system(size: 22, weight: .black, design: .monospaced))
+            Text("Save named configurations independently of saved games.")
+                .foregroundStyle(.secondary)
+            HStack {
+                Picker("Preset", selection: $selected) {
+                    Text("New setup").tag(nil as UUID?)
+                    ForEach(savedPresets) { item in Text(item.name).tag(Optional(item.id)) }
+                }
+                .onChange(of: selected) { id in
+                    guard let item = savedPresets.first(where: { $0.id == id }) else { return }
+                    rules = item.rules
+                    presetName = item.name
+                }
+                Button("Reset") { rules = DivideRules(); selected = nil }
+            }
+            TextField("Configuration name", text: $presetName)
+            Form {
+                Section("Challenge") {
+                    Stepper("Extra lives: \(rules.extraLives)", value: $rules.extraLives, in: -2...6)
+                    Stepper("Additional enemies: \(rules.extraEnemies)", value: $rules.extraEnemies, in: 0...3)
+                    slider("Enemy movement speed", value: $rules.enemySpeed, range: 0.5...2.5)
+                    slider("Border spark speed", value: $rules.sparkSpeed, range: 0.5...2.5)
+                    slider("Territory target %", value: $rules.targetPercent, range: 50...95, step: 1)
+                }
+                Section("Movement and trace") {
+                    slider("Drawing speed", value: $rules.drawSpeed, range: 0.6...1.7)
+                    slider("Idle time before fuse", value: $rules.fuseDelay, range: 0.4...3.5)
+                }
+            }
+            .formStyle(.grouped)
+            HStack {
+                Button("Delete Preset", role: .destructive) {
+                    guard let selected else { return }
+                    DivideStore.removePreset(selected)
+                    savedPresets = DivideStore.presets()
+                    self.selected = nil
+                }.disabled(selected == nil)
+                Spacer()
+                Button("Save Preset") {
+                    let item = DividePreset(id: selected ?? UUID(),
+                                            name: presetName.isEmpty ? "My Divide" : presetName,
+                                            rules: rules.validated())
+                    DivideStore.upsert(item)
+                    savedPresets = DivideStore.presets()
+                    selected = item.id
+                }
+                Button("Standard Game") { apply(nil); dismiss() }
+                Button("Apply & Start") { apply(rules.validated()); dismiss() }
+                    .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(22).frame(width: 640, height: 680)
+        .onAppear {
+            rules = initial
+            savedPresets = DivideStore.presets()
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    private func slider(_ name: String, value: Binding<Double>,
+                        range: ClosedRange<Double>, step: Double = 0.05) -> some View {
+        HStack {
+            Text(name)
+            Slider(value: value, in: range, step: step)
+            Text(String(format: "%.2f", value.wrappedValue))
+                .monospacedDigit().frame(width: 50, alignment: .trailing)
+        }
+    }
+}
+
+private struct DivideSavesSheet: View {
+    let restore: (DivideSave) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var saves: [DivideSave] = []
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("LOAD SAVED GAME")
+                .font(.system(size: 22, weight: .black, design: .monospaced))
+            Text("Eight local saves maximum. Resumed games start paused.")
+                .foregroundStyle(.secondary)
+            if saves.isEmpty { Text("No saved games yet.") }
+            else {
+                List {
+                    ForEach(saves) { save in
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(save.name).fontWeight(.semibold)
+                                Text("Level \(save.snapshot.level) · \(save.snapshot.score) points · \(save.saved.formatted(date: .abbreviated, time: .shortened))")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button("Resume") { restore(save); dismiss() }
+                                .buttonStyle(.borderedProminent)
+                            Button(role: .destructive) {
+                                DivideStore.deleteSave(save.id)
+                                saves = DivideStore.saves()
+                            } label: { Image(systemName: "trash") }
+                        }
+                    }
+                }
+            }
+            HStack { Spacer(); Button("Close") { dismiss() } }
+        }
+        .padding(22).frame(width: 620, height: 480)
+        .onAppear { saves = DivideStore.saves() }
+        .preferredColorScheme(.dark)
     }
 }
