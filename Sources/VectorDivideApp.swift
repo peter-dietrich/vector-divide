@@ -20,6 +20,9 @@ final class DivideSession: ObservableObject {
     @Published var difficulty: DivideDifficulty = .veteran
     @Published var records = DivideStore.records()
     @Published var customRules: DivideRules? = nil
+    @Published var modern: Bool = UserDefaults.standard.bool(forKey: "VectorDivide.ModernDisplay.v1") {
+        didSet { UserDefaults.standard.set(modern, forKey: "VectorDivide.ModernDisplay.v1") }
+    }
     var bestScore: Int { records.first?.score ?? 0 }
     var bestInitials: String { records.first?.initials ?? "---" }
     @Published var askInitials = false
@@ -128,7 +131,7 @@ struct DivideWindow: View {
     private let magenta = Color(red: 1, green: 0.36, blue: 0.75)
 
     private var version: String {
-        let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0"
+        let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.3.0"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
         return "v\(v) (\(build))"
     }
@@ -148,7 +151,7 @@ struct DivideWindow: View {
                         .foregroundStyle(.white.opacity(0.53))
                 }
                 Spacer(minLength: 10)
-                Text("CLASSIC / WIREFRAME")
+                Text(session.modern ? "CONTAINMENT" : "CLASSIC")
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .foregroundStyle(cyan.opacity(0.9))
                     .tracking(1.1)
@@ -193,9 +196,43 @@ struct DivideWindow: View {
             .frame(height: 66)
             .background(Color(red: 0.044, green: 0.056, blue: 0.093))
 
+            HStack(spacing: 14) {
+                Label("DISPLAY", systemImage: "square.3.layers.3d")
+                    .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.58))
+                Picker("Visual Mode", selection: $session.modern) {
+                    Text("Classic").tag(false)
+                    Text("Modern / Containment").tag(true)
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .frame(width: 280)
+                Text(session.modern ?
+                     "REACTOR 01  /  CONTAINMENT ARRAY  /  SOLID ARMOR" :
+                     "ORIGINAL VECTOR GRID  /  CLASSIC RULES")
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(session.modern ? cyan.opacity(0.85) : .white.opacity(0.53))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Spacer(minLength: 0)
+                Text("STANDARD ENEMY SPEED 2.5×")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundStyle(amber)
+            }
+            .padding(.horizontal, 20)
+            .frame(height: 40)
+            .background(Color(red: 0.025, green: 0.039, blue: 0.073))
+
             GeometryReader { geometry in
                 HStack(spacing: 18) {
-                    DivideBoard(engine: session.engine)
+                    Group {
+                        if session.modern {
+                            DivideContainmentBoard(engine: session.engine,
+                                clock: Date.timeIntervalSinceReferenceDate)
+                        } else {
+                            DivideBoard(engine: session.engine)
+                        }
+                    }
                         .aspectRatio(CGFloat(DivideEngine.columns) / CGFloat(DivideEngine.rows), contentMode: .fit)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(DivideKeyboardCapture(session: session))
@@ -475,7 +512,7 @@ private struct DivideCustomSheet: View {
                 Section("Challenge") {
                     Stepper("Extra lives: \(rules.extraLives)", value: $rules.extraLives, in: -2...6)
                     Stepper("Additional enemies: \(rules.extraEnemies)", value: $rules.extraEnemies, in: 0...3)
-                    slider("Enemy movement speed", value: $rules.enemySpeed, range: 0.5...2.5)
+                    slider("Enemy movement speed", value: $rules.enemySpeed, range: 0.5...4.0)
                     slider("Border spark speed", value: $rules.sparkSpeed, range: 0.5...2.5)
                     slider("Territory target %", value: $rules.targetPercent, range: 50...95, step: 1)
                 }
