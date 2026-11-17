@@ -69,14 +69,14 @@ struct EngineSmoke {
         var normal = baseline
         normal.start(.veteran)
         let defaultVelocity = hypot(normal.enemies[0].velocity.x, normal.enemies[0].velocity.y)
-        precondition(abs(defaultVelocity - 7.1) < 0.0001, "Starting enemy speed must be 7.1")
+        precondition(abs(defaultVelocity - 7.1 * 2.5) < 0.0001, "Standard enemy speed must use the 2.5x baseline")
         var tuned = DivideEngine()
         tuned.start(.veteran, rules: DivideRules(extraLives: 2, enemySpeed: 1.5, extraEnemies: 1,
                                                   sparkSpeed: 1.2, targetPercent: 65,
                                                   drawSpeed: 1.1, fuseDelay: 1.8))
         precondition(tuned.lives == 5 && tuned.enemies.count == 2)
         precondition(abs(hypot(tuned.enemies[0].velocity.x, tuned.enemies[0].velocity.y)
-                         - defaultVelocity * 1.5) < 0.0001)
+                         - 7.1 * 1.5) < 0.0001)
         let snapshot = try! JSONEncoder().encode(tuned)
         let recovered = try! JSONDecoder().decode(DivideEngine.self, from: snapshot)
         precondition(recovered.validSnapshot && recovered.lives == tuned.lives)
@@ -87,8 +87,8 @@ struct EngineSmoke {
                                extraEnemies: 99, sparkSpeed: -40,
                                targetPercent: 150, drawSpeed: 0.01, fuseDelay: -3)
         let validated = wild.validated()
-        precondition(validated.extraLives == 6 && validated.enemySpeed == 2.5)
+        precondition(validated.extraLives == 6 && validated.enemySpeed == 4.0)
         precondition(validated.targetPercent == 95 && validated.fuseDelay == 0.4)
-        print("PASS — Vector Divide: capture, enemies, levels, fuse, Codable saves, custom rules, speed")
+        print("PASS — Vector Divide: capture, enemies, levels, fuse, Codable saves, custom rules, 2.5x baseline")
     }
 }
