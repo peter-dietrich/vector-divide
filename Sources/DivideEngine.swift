@@ -2,7 +2,7 @@ import Foundation
 
 // Original grid territory game engine. No UI or macOS dependencies: the same
 // simulation will power both the classic and future graphical editions.
-struct DividePoint: Hashable {
+struct DividePoint: Hashable, Codable {
     var x: Int
     var y: Int
     func offset(_ direction: DivideDirection) -> DividePoint {
@@ -10,12 +10,12 @@ struct DividePoint: Hashable {
     }
 }
 
-struct DivideVector {
+struct DivideVector: Codable {
     var x: Double
     var y: Double
 }
 
-enum DivideDirection: CaseIterable {
+enum DivideDirection: String, CaseIterable, Codable {
     case up, down, left, right
     var dx: Int {
         switch self { case .left: return -1; case .right: return 1; default: return 0 }
@@ -25,18 +25,18 @@ enum DivideDirection: CaseIterable {
     }
 }
 
-enum DivideDrawMode {
+enum DivideDrawMode: String, Codable {
     case fast, slow
     var cellTone: UInt8 { self == .slow ? 2 : 1 }
     var pointsPerPercent: Double { self == .slow ? 250 : 125 }
     var moveInterval: Double { self == .slow ? 0.137 : 0.071 }
 }
 
-enum DividePhase {
+enum DividePhase: String, Codable {
     case ready, playing, paused, levelClear, gameOver
 }
 
-enum DivideDifficulty: String, CaseIterable {
+enum DivideDifficulty: String, CaseIterable, Codable {
     case cadet = "Cadet", veteran = "Veteran", ace = "Ace"
     var speed: Double {
         switch self { case .cadet: return 0.75; case .veteran: return 1.0; case .ace: return 1.32 }
@@ -44,19 +44,44 @@ enum DivideDifficulty: String, CaseIterable {
     var initialLives: Int { self == .cadet ? 5 : 3 }
 }
 
-struct DivideEnemy {
+struct DivideEnemy: Codable {
     var position: DivideVector
     var velocity: DivideVector
     var spin: Double
 }
 
-struct DivideSpark {
+struct DivideSpark: Codable {
     // Along the original outside border: an active hazard even while tracing a safe line.
     var progress: Double
     var speed: Double
 }
 
-struct DivideEngine {
+/// Tunable arcade rules. Defaults retain the game's classic 75% territory objective.
+struct DivideRules: Codable, Equatable {
+    var extraLives = 0
+    var enemySpeed = 1.0
+    var extraEnemies = 0
+    var sparkSpeed = 1.0
+    var targetPercent = 75.0
+    var drawSpeed = 1.0
+    var fuseDelay = 1.15
+
+    func validated() -> DivideRules {
+        var copy = self
+        copy.extraLives = max(-2, min(6, extraLives))
+        copy.enemySpeed = enemySpeed.isFinite ? max(0.5, min(2.5, enemySpeed)) : 1
+        copy.extraEnemies = max(0, min(3, extraEnemies))
+        copy.sparkSpeed = sparkSpeed.isFinite ? max(0.5, min(2.5, sparkSpeed)) : 1
+        copy.targetPercent = targetPercent.isFinite ? max(50, min(95, targetPercent)) : 75
+        copy.drawSpeed = drawSpeed.isFinite ? max(0.6, min(1.7, drawSpeed)) : 1
+        copy.fuseDelay = fuseDelay.isFinite ? max(0.4, min(3.5, fuseDelay)) : 1.15
+        return copy
+    }
+
+    var isDefault: Bool { self == DivideRules() }
+}
+
+struct DivideEngine: Codable {
     static let columns = 68
     static let rows = 44
     static let target = 75.0
@@ -74,6 +99,7 @@ struct DivideEngine {
     private(set) var lives = 3
     private(set) var level = 1
     private(set) var difficulty: DivideDifficulty = .veteran
+    private(set) var rules = DivideRules()
     private(set) var lastGain = 0.0
     private(set) var lastAward = 0
 
@@ -108,11 +134,12 @@ struct DivideEngine {
         (0..<Self.columns).contains(point.x) && (0..<Self.rows).contains(point.y)
     }
 
-    mutating func start(_ difficulty: DivideDifficulty) {
+    mutating func start(_ difficulty: DivideDifficulty, rules: DivideRules = DivideRules()) {
         self.difficulty = difficulty
+        self.rules = rules.validated()
         level = 1
         score = 0
-        lives = difficulty.initialLives
+        lives = max(1, difficulty.initialLives + self.rules.extraLives)
         resetField()
         phase = .playing
     }
@@ -151,12 +178,12 @@ struct DivideEngine {
         lastGain = 0
         lastAward = 0
         levelAwarded = false
-        let enemyCount = min(3, 1 + (level - 1) / 3)
+        let enemyCount = min(6, 1 + (level - 1) / 3 + rules.extraEnemies)
         enemies = (0..<enemyCount).map { index in
-            let x = Double(Self.columns) * (0.34 + Double(index) * 0.14)
-            let y = Double(Self.rows) * (0.41 + Double(index % 2) * 0.15)
+            let x = Double(Self.columns) * (0.20 + Double(index % 5) * 0.15)
+            let y = Double(Self.rows) * (0.30 + Double(index % 3) * 0.18)
             let angle = (0.68 + Double(index) * 1.88)
-            let speed = (6.1 + Double(level - 1) * 0.36) * difficulty.speed
+            let speed = (7.1 + Double(level - 1) * 0.42) * difficulty.speed * rules.enemySpeed
             return DivideEnemy(position: DivideVector(x: x, y: y),
                                velocity: DivideVector(x: cos(angle) * speed, y: sin(angle) * speed),
                                spin: Double(index))
@@ -172,7 +199,7 @@ struct DivideEngine {
         let delta = max(0, min(dt, 1.0 / 20.0))
         invulnerableTime = max(0, invulnerableTime - delta)
         movementClock += delta
-        let interval = drawMode?.moveInterval ?? 0.064
+        let interval = (drawMode?.moveInterval ?? 0.064) / rules.drawSpeed
         var walked = false
         var steps = 0
         while movementClock >= interval && steps < 3 {
@@ -183,7 +210,7 @@ struct DivideEngine {
         }
         if isDrawing {
             inactivityClock = walked ? 0 : inactivityClock + delta
-            if inactivityClock > 1.15 {
+            if inactivityClock > rules.fuseDelay {
                 fuseClock += delta
                 while fuseClock > 0.095 {
                     fuseClock -= 0.095
@@ -281,9 +308,9 @@ struct DivideEngine {
         lastGain = gain
         lastAward = Int((gain * (tint == 2 ? 250.0 : 125.0)).rounded())
         score += lastAward
-        if percentClaimed >= Self.target && !levelAwarded {
+        if percentClaimed >= rules.targetPercent && !levelAwarded {
             levelAwarded = true
-            let extra = max(0, Int(percentClaimed - Self.target))
+            let extra = max(0, Int(percentClaimed - rules.targetPercent))
             score += extra * 1000
             phase = .levelClear
         }
@@ -319,7 +346,7 @@ struct DivideEngine {
     }
 
     private mutating func moveSparks(_ dt: Double) {
-        for i in sparks.indices { sparks[i].progress += sparks[i].speed * dt * difficulty.speed }
+        for i in sparks.indices { sparks[i].progress += sparks[i].speed * dt * difficulty.speed * rules.sparkSpeed }
     }
 
     private mutating func detectHits() {
@@ -352,5 +379,24 @@ struct DivideEngine {
         player = DividePoint(x: Self.columns / 2, y: 0)
         invulnerableTime = 1.7
         if lives <= 0 { phase = .gameOver }
+    }
+    /// Only accept geometrically valid persisted snapshots; saved-game data is untrusted.
+    var validSnapshot: Bool {
+        guard cells.count == Self.columns * Self.rows,
+              (1...9999).contains(level), (0...99).contains(lives),
+              score >= 0, score < 1_000_000_000,
+              inBounds(player),
+              trail.count <= cells.count,
+              trail.allSatisfy({ inBounds($0) }),
+              trailStart.map({ inBounds($0) }) ?? true,
+              enemies.count <= 20,
+              enemies.allSatisfy({ $0.position.x.isFinite && $0.position.y.isFinite &&
+                                  $0.velocity.x.isFinite && $0.velocity.y.isFinite &&
+                                  $0.spin.isFinite }),
+              sparks.count <= 20,
+              sparks.allSatisfy({ $0.progress.isFinite && $0.speed.isFinite }),
+              movementClock.isFinite, inactivityClock.isFinite,
+              fuseClock.isFinite, invulnerableTime.isFinite else { return false }
+        return true
     }
 }
