@@ -356,7 +356,8 @@ struct DivideWindow: View {
                 Text("No recorded scores yet. Finish a game to enter your initials.")
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(Array(session.records.enumerated()), id: \.offset) { offset, record in
+                ForEach(session.records.indices, id: \.self) { offset in
+                    let record = session.records[offset]
                     HStack {
                         Text(String(format: "%02d", offset + 1)).frame(width: 35, alignment: .leading)
                         Text(record.initials).frame(width: 50)
