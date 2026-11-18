@@ -129,6 +129,73 @@ struct DivideModern3D: NSViewRepresentable {
             return SCNNode(geometry: g)
         }
 
+        /// Side-mounted power manifolds make the reactor architecture plausible.
+        /// All housings remain beyond the original outer perimeter; relay towers
+        /// inside the board retain the gameplay meaning of "power restoration".
+        private func buildPerimeterInfrastructure() {
+            let shell = Coordinator.material(0.105, 0.18, 0.245, metal: 0.81)
+            let recess = Coordinator.material(0.027, 0.058, 0.098, metal: 0.54)
+            let trim = Coordinator.material(0.18, 0.30, 0.36, metal: 0.82)
+            for side in [-1.0, 1.0] {
+                let x = CGFloat(side) * 36.8
+
+                // Low, longitudinal transformer bank bolted to the side rail.
+                let foundation = box(3.8, 0.75, 20, shell, chamfer: 0.19)
+                foundation.position = SCNVector3(x, -0.10, 0)
+                arena.addChildNode(foundation)
+                let body = box(3.05, 1.45, 17.7, recess, chamfer: 0.18)
+                body.position = SCNVector3(x, 0.85, 0)
+                arena.addChildNode(body)
+
+                // Real service modules, mounting collars, and power bus contacts.
+                for slot in -2...2 {
+                    let z = CGFloat(slot) * 3.35
+                    let bay = box(2.65, 0.24, 2.65, trim, chamfer: 0.10)
+                    bay.position = SCNVector3(x, 1.65, z)
+                    arena.addChildNode(bay)
+                    let bus = box(1.8, 0.055, 0.22,
+                                  slot.isMultiple(of: 2) ? cyan : amber)
+                    bus.position = SCNVector3(x, 1.80, z)
+                    bus.castsShadow = false
+                    arena.addChildNode(bus)
+                    for offset in [-1.08, 1.08] {
+                        let fastener = box(0.24, 0.26, 0.26, steel, chamfer: 0.04)
+                        fastener.position = SCNVector3(x + CGFloat(offset), 1.78, z)
+                        arena.addChildNode(fastener)
+                    }
+                }
+
+                // Conduit risers visibly connect the modules to the arena.
+                for z in [-8.5, 8.5] {
+                    let riser = box(0.40, 1.4, 0.50, shell, chamfer: 0.06)
+                    riser.position = SCNVector3(x - CGFloat(side) * 1.05, 1.2, CGFloat(z))
+                    arena.addChildNode(riser)
+                    let status = box(0.31, 0.16, 0.29, cyan)
+                    status.position = SCNVector3(x - CGFloat(side) * 1.05, 1.98, CGFloat(z))
+                    status.castsShadow = false
+                    arena.addChildNode(status)
+                }
+            }
+
+            // Rear power distribution gantry: functional-looking and well outside
+            // the play area, with no enormous obstructions in the foreground.
+            let rear = box(19, 1.8, 2.2, shell, chamfer: 0.24)
+            rear.position = SCNVector3(0, 0.02, -24.8)
+            arena.addChildNode(rear)
+            let service = box(17.4, 0.65, 1.45, recess, chamfer: 0.12)
+            service.position = SCNVector3(0, 1.10, -24.8)
+            arena.addChildNode(service)
+            for index in -4...4 {
+                let x = CGFloat(index) * 1.82
+                let light = box(0.70, 0.13, 0.26,
+                                index.isMultiple(of: 3) ? amber : cyan,
+                                chamfer: 0.025)
+                light.position = SCNVector3(x, 1.52, -24.3)
+                light.castsShadow = false
+                arena.addChildNode(light)
+            }
+        }
+
         private func buildScene() {
             initialized = true
             scene.background.contents = NSColor.black
@@ -159,28 +226,9 @@ struct DivideModern3D: NSViewRepresentable {
                 arena.addChildNode(lightRail)
             }
 
-            // Large reactor machinery stands around the perimeter and does not
-            // occlude safe paths or become decorative "wallpaper" in captured regions.
-            for corner in 0..<4 {
-                let x: Float = corner % 2 == 0 ? -38 : 38
-                let z: Float = corner / 2 == 0 ? -26 : 26
-                let plinth = box(6, 4.4, 6, steel, chamfer: 0.35)
-                plinth.position = SCNVector3(x, 0.1, z)
-                arena.addChildNode(plinth)
-                let chamber = cylinder(2.1, 5.6, black)
-                chamber.position = SCNVector3(x, 4.5, z)
-                arena.addChildNode(chamber)
-                let cap = torus(2.05, 0.19, cyan)
-                cap.position = SCNVector3(x, 7.3, z)
-                arena.addChildNode(cap)
-                let core = orb(0.88, amber)
-                core.position = SCNVector3(x, 4.5, z)
-                arena.addChildNode(core)
-                core.runAction(.repeatForever(.sequence([
-                    .moveBy(x: 0, y: 0.27, z: 0, duration: 1.1),
-                    .moveBy(x: 0, y: -0.27, z: 0, duration: 1.1)
-                ])))
-            }
+            // Integrated side-mounted systems replace the four disconnected
+            // corner towers. Everything is outside the playable 68x44 grid.
+            buildPerimeterInfrastructure()
 
             // Physical piping is outside the board so no capture cell is hidden.
             for z in [-25.0, 25.0] {
@@ -197,21 +245,26 @@ struct DivideModern3D: NSViewRepresentable {
             let camera = SCNCamera()
             camera.usesOrthographicProjection = true
             // Frame the entire reactor at ~90% of the available board width.
-            camera.orthographicScale = 28
+            // 3/4 quarter-angle: 37 degrees up, slight yaw exposes the
+            // vertical face of walls running BOTH north/south and east/west.
+            // Widen the view enough to retain every safe edge and both side bays.
+            camera.orthographicScale = 29.5
             camera.zNear = 0.1
             camera.zFar = 400
             camera.wantsHDR = true
             camera.bloomIntensity = 0.24
             camera.bloomThreshold = 1.2
             cameraNode.camera = camera
-            cameraNode.position = SCNVector3(0, 97, 83)
+            cameraNode.position = SCNVector3(29, 80, 106)
             cameraNode.look(at: SCNVector3(0, 0, 0))
             scene.rootNode.addChildNode(cameraNode)
 
             let ambient = SCNLight()
             ambient.type = .ambient
             ambient.color = NSColor(red: 0.43, green: 0.59, blue: 0.82, alpha: 1)
-            ambient.intensity = 550
+            // Ambient fill preserves line readability; stronger key shadows
+            // and side lighting reinforce the newly lowered camera.
+            ambient.intensity = 390
             let ambientNode = SCNNode()
             ambientNode.light = ambient
             scene.rootNode.addChildNode(ambientNode)
@@ -231,10 +284,11 @@ struct DivideModern3D: NSViewRepresentable {
             let sun = SCNLight()
             sun.type = .directional
             sun.color = NSColor(white: 0.72, alpha: 1)
-            sun.intensity = 900
+            sun.intensity = 1180
             sun.castsShadow = true
             sun.shadowMode = .deferred
-            sun.shadowSampleCount = 4
+            sun.shadowSampleCount = 8
+            sun.shadowRadius = 3
             let key = SCNNode()
             key.light = sun
             key.eulerAngles = SCNVector3(-Float.pi / 3, Float.pi/5, 0)
