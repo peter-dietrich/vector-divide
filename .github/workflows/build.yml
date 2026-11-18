@@ -13,3 +13,5 @@ jobs:
         run: bash scripts/test_engine.sh
       - name: Build native game
         run: xcodebuild -project VectorDivide.xcodeproj -scheme VectorDivide -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build
+      - name: Verify bundled macOS app icon
+        run: bash scripts/check-app-branding.sh VectorDivide
