@@ -35,6 +35,9 @@ final class DivideSession: ObservableObject {
     private var promptedForRecord = false
     @Published var pendingMessage: String? = nil
     @Published var captureFX: DivideCaptureFX? = nil
+    @Published var soundEnabled = DivideAudio.shared.enabled {
+        didSet { DivideAudio.shared.enabled = soundEnabled }
+    }
 
     private var direction: DivideDirection? {
         // Arrow keys and WASD, using native macOS key codes.
@@ -69,6 +72,7 @@ final class DivideSession: ObservableObject {
     func newGame() {
         keys.removeAll()
         engine.start(difficulty, rules: customRules ?? DivideRules())
+        DivideAudio.shared.play(.start)
         captureFX = nil
         promptedForRecord = false
         lastTime = Date()
@@ -107,6 +111,8 @@ final class DivideSession: ObservableObject {
         let request: DivideDrawMode? = shiftHeld ? .slow : (keys.contains(49) ? .fast : nil)
         // A completed line creates an ephemeral renderer-only power-up wave.
         // No animation data is included in saves, collision detection or the engine.
+        let oldLives = engine.lives
+        let oldPhase = engine.phase
         let previousTrail = engine.trail
         let previousStart = engine.trailStart
         let oldCells = previousTrail.isEmpty ? [] : engine.cells
@@ -125,8 +131,12 @@ final class DivideSession: ObservableObject {
                     origin: previousTrail.last ?? previousStart ?? engine.player,
                     gain: engine.lastGain,
                     award: engine.lastAward)
+                DivideAudio.shared.play(.capture, magnitude: engine.lastGain)
             }
         }
+        if engine.lives < oldLives { DivideAudio.shared.play(.damage) }
+        if engine.phase == .levelClear && oldPhase != .levelClear { DivideAudio.shared.play(.victory) }
+        if previousTrail.isEmpty && !engine.trail.isEmpty { DivideAudio.shared.play(.trace) }
         if let effect = captureFX,
            Date.timeIntervalSinceReferenceDate - effect.began >= effect.duration {
             captureFX = nil
@@ -243,6 +253,14 @@ struct DivideWindow: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 Spacer(minLength: 0)
+                if session.modern {
+                    Toggle(isOn: $session.soundEnabled) {
+                        Label("SOUND", systemImage: session.soundEnabled ? "speaker.wave.2" : "speaker.slash")
+                    }
+                    .toggleStyle(.checkbox)
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(cyan)
+                }
                 Text("STANDARD ENEMY SPEED 2.5×")
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .foregroundStyle(amber)
@@ -380,6 +398,23 @@ struct DivideWindow: View {
             Divider().overlay(cyan.opacity(0.2))
             numberRow("LAST CAPTURE", String(format: "+%.1f%%", session.engine.lastGain), color: cyan)
             numberRow("AREA BONUS", "+\(session.engine.lastAward)", color: amber)
+            if session.modern {
+                Divider().overlay(cyan.opacity(0.2))
+                Text("TACTICAL FIELD / LIVE")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundStyle(cyan.opacity(0.85))
+                DivideTacticalMap(engine: session.engine)
+                    .aspectRatio(CGFloat(DivideEngine.columns) / CGFloat(DivideEngine.rows), contentMode: .fit)
+                    .overlay(Rectangle().stroke(cyan.opacity(0.25), lineWidth: 1))
+                Text(session.engine.isDrawing ? "EXPOSED CIRCUIT — CONNECT TO SEAL" : "CORE STATUS — ACTIVE")
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .foregroundStyle(session.engine.isDrawing ? amber : cyan)
+                if let effect = session.captureFX {
+                    Text(String(format: "REACTOR RESTORED  +%.1f%%", effect.gain))
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .foregroundStyle(amber)
+                }
+            }
             Spacer(minLength: 10)
             VStack(alignment: .leading, spacing: 8) {
                 Text("FIELD THREATS")
