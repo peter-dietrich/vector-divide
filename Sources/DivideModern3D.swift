@@ -68,6 +68,10 @@ struct DivideModern3D: NSViewRepresentable {
         private let cyanShield = Coordinator.shield(0.09, 0.62, 0.87)
         private let amberShield = Coordinator.shield(0.96, 0.48, 0.15)
         private let white = Coordinator.material(0.69, 0.96, 1.0, metal: 0.13, emission: (0.32, 0.64, 0.72))
+        private let decking = Coordinator.material(0.16, 0.29, 0.35, metal: 0.72)
+        private let seam = Coordinator.material(0.035, 0.075, 0.115, metal: 0.63)
+        private let mutedLight = Coordinator.material(0.15, 0.39, 0.47, metal: 0.48,
+                                                       emission: (0.02, 0.09, 0.11))
         private var enemies = [SCNNode]()
         private var sentries = [SCNNode]()
 
@@ -211,6 +215,18 @@ struct DivideModern3D: NSViewRepresentable {
             let void = box(66.2, 0.11, 42.2, black)
             void.position.y = -0.22
             arena.addChildNode(void)
+            // Recessed, unpowered servicing tracks are part of the physical deck,
+            // not abstract fill or neon stripes.
+            for z in [-13.5, 0.0, 13.5] {
+                let trench = box(65.3, 0.05, 0.65, seam)
+                trench.position = SCNVector3(0, -0.14, CGFloat(z))
+                arena.addChildNode(trench)
+                for n in -9...9 {
+                    let bridge = box(0.85, 0.07, 0.56, steel, chamfer: 0.025)
+                    bridge.position = SCNVector3(CGFloat(n) * 3.3, -0.09, CGFloat(z))
+                    arena.addChildNode(bridge)
+                }
+            }
             // Strong perimeter barricade and illuminated rails.
             for side in 0..<4 {
                 let horizontal = side < 2
@@ -438,50 +454,83 @@ struct DivideModern3D: NSViewRepresentable {
             fingerprint = hash
             capturedRoot.childNodes.forEach { $0.removeFromParentNode() }
 
-            // Merge contiguous captured cells into long rectangular steel slabs.
-            // This keeps the scene small even after 75% containment.
-            for y in 1..<(DivideEngine.rows-1) {
+            // Broad, contiguous rows of solid plating, with dark structural
+            // seams rather than a bright line drawn across every grid cell.
+            for y in 1..<(DivideEngine.rows - 1) {
                 var x = 1
-                while x < DivideEngine.columns-1 {
+                while x < DivideEngine.columns - 1 {
                     let tone = engine.tone(DividePoint(x: x, y: y))
                     if tone == 0 { x += 1; continue }
                     let first = x
-                    while x < DivideEngine.columns-1 &&
-                            engine.tone(DividePoint(x: x, y: y)) == tone { x += 1 }
+                    while x < DivideEngine.columns - 1 &&
+                          engine.tone(DividePoint(x: x, y: y)) == tone { x += 1 }
                     let length = x - first
-                    let slab = box(CGFloat(length), 0.36, 0.95,
-                                   tone == 2 ? purple : active, chamfer: 0.045)
-                    slab.position = Self.location(Double(first+x-1)/2, Double(y), elevation: 0.11)
+                    let slab = box(CGFloat(length), 0.34, 1.01,
+                                   tone == 2 ? purple : decking, chamfer: 0.035)
+                    slab.position = Self.location(Double(first + x - 1) * 0.5, Double(y),
+                                                  elevation: 0.10)
                     capturedRoot.addChildNode(slab)
-                    let highlight = box(CGFloat(length)*0.90, 0.035, 0.055,
-                                        tone == 2 ? amber : cyan)
-                    highlight.position = Self.location(Double(first+x-1)/2,
-                                                       Double(y)+0.38, elevation: 0.32)
-                    capturedRoot.addChildNode(highlight)
                 }
             }
-            // Industrial power plates are *activated* only when the underlying
-            // 4x4 footprint is completely safe; these structures are physical.
-            for y in stride(from: 4, to: 40, by: 8) {
-                for x in stride(from: 5, to: 64, by: 11) {
-                    var safe = true
-                    for yy in y..<(y+4) {
-                        for xx in x..<(x+4) {
-                            if !engine.isSafe(DividePoint(x: xx, y: yy)) { safe = false }
+
+            // Deliberately spacious armored service bays. They appear only once
+            // their entire 6x5 footprint is restored and cannot obstruct movement.
+            let bayCentersX = [8, 20, 32, 44, 56]
+            let bayCentersY = [7, 18, 29, 38]
+            for (rowIndex, y) in bayCentersY.enumerated() {
+                for (columnIndex, x) in bayCentersX.enumerated() {
+                    var complete = true
+                    for yy in (y - 2)...(y + 2) {
+                        for xx in (x - 3)...(x + 2) {
+                            if !engine.isSafe(DividePoint(x: xx, y: yy)) {
+                                complete = false
+                                break
+                            }
+                        }
+                        if !complete { break }
+                    }
+                    guard complete else { continue }
+                    let center = Self.location(Double(x) - 0.5, Double(y))
+                    let frame = box(6.0, 0.22, 5.1, steel, chamfer: 0.18)
+                    frame.position = SCNVector3(center.x, 0.36, center.z)
+                    capturedRoot.addChildNode(frame)
+                    let recess = box(5.1, 0.08, 4.0, seam, chamfer: 0.11)
+                    recess.position = SCNVector3(center.x, 0.50, center.z)
+                    capturedRoot.addChildNode(recess)
+                    let variant = (columnIndex + rowIndex * 3) % 3
+                    switch variant {
+                    case 0:
+                        // Power-routing panel: three thick protected bus bars.
+                        for lane in [-1.10, 0.0, 1.10] {
+                            let conduit = box(4.3, 0.12, 0.35, mutedLight, chamfer: 0.04)
+                            conduit.position = SCNVector3(center.x, 0.59, center.z + CGFloat(lane))
+                            capturedRoot.addChildNode(conduit)
+                        }
+                    case 1:
+                        // Equipment hatch: a low, inset access panel, not a tower.
+                        let hatch = box(3.3, 0.11, 2.4, decking, chamfer: 0.16)
+                        hatch.position = SCNVector3(center.x, 0.60, center.z)
+                        capturedRoot.addChildNode(hatch)
+                        for side in [-1.0, 1.0] {
+                            let grip = box(0.33, 0.06, 1.45, mutedLight)
+                            grip.position = SCNVector3(center.x + CGFloat(side)*1.37,
+                                                       0.69, center.z)
+                            capturedRoot.addChildNode(grip)
+                        }
+                    default:
+                        // Cooling grille with real recessed slots.
+                        for lane in -2...2 {
+                            let vent = box(4.30, 0.055, 0.36, black, chamfer: 0.025)
+                            vent.position = SCNVector3(center.x, 0.57,
+                                                       center.z + CGFloat(lane)*0.60)
+                            capturedRoot.addChildNode(vent)
                         }
                     }
-                    guard safe else { continue }
-                    let p = Self.location(Double(x)+1.5, Double(y)+1.5)
-                    let housing = box(3.6, 0.42, 3.3, steel, chamfer: 0.18)
-                    housing.position = SCNVector3(p.x, 0.50, p.z)
-                    capturedRoot.addChildNode(housing)
-                    let vent = box(2.8, 0.05, 1.0, black)
-                    vent.position = SCNVector3(p.x, 0.76, p.z)
-                    capturedRoot.addChildNode(vent)
-                    for offset in [-0.65, 0.0, 0.65] {
-                        let bar = box(0.13, 0.10, 0.85, cyan)
-                        bar.position = SCNVector3(p.x + CGFloat(offset), 0.80, p.z)
-                        capturedRoot.addChildNode(bar)
+                    for side in [-1.0, 1.0] {
+                        let screw = cylinder(0.14, 0.11, mutedLight)
+                        screw.position = SCNVector3(center.x + CGFloat(side)*2.45, 0.64,
+                                                   center.z - 1.86)
+                        capturedRoot.addChildNode(screw)
                     }
                 }
             }
