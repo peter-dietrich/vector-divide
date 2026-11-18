@@ -3,6 +3,7 @@ import SwiftUI
 
 @main
 struct VectorDivideApp: App {
+    @NSApplicationDelegateAdaptor(ArcadeIconAppDelegate.self) private var iconDelegate
     var body: some Scene {
         WindowGroup("Vector Divide") {
             DivideWindow()
