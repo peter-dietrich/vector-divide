@@ -26,7 +26,7 @@ struct DivideModern3D: NSViewRepresentable {
     func makeNSView(context: Context) -> SCNView {
         let view = SCNView(frame: .zero)
         view.scene = context.coordinator.scene
-        view.backgroundColor = NSColor(red: 0.016, green: 0.025, blue: 0.048, alpha: 1)
+        view.backgroundColor = .black
         view.antialiasingMode = .multisampling4X
         view.rendersContinuously = true
         view.preferredFramesPerSecond = 60
@@ -65,6 +65,8 @@ struct DivideModern3D: NSViewRepresentable {
         private let cyan = Coordinator.material(0.21, 0.78, 0.93, metal: 0.25, emission: (0.18, 0.57, 0.72))
         private let amber = Coordinator.material(0.96, 0.49, 0.16, metal: 0.33, emission: (0.51, 0.12, 0.015))
         private let black = Coordinator.material(0.020, 0.038, 0.071, metal: 0.43)
+        private let cyanShield = Coordinator.shield(0.09, 0.62, 0.87)
+        private let amberShield = Coordinator.shield(0.96, 0.48, 0.15)
         private let white = Coordinator.material(0.69, 0.96, 1.0, metal: 0.13, emission: (0.32, 0.64, 0.72))
         private var enemies = [SCNNode]()
         private var sentries = [SCNNode]()
@@ -79,6 +81,16 @@ struct DivideModern3D: NSViewRepresentable {
             m.emission.contents = NSColor(srgbRed: emission.0, green: emission.1,
                                           blue: emission.2, alpha: 1)
             m.lightingModel = .physicallyBased
+            m.isDoubleSided = true
+            return m
+        }
+
+        /// A translucent energy membrane inside a real solid 3D wall frame.
+        private static func shield(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> SCNMaterial {
+            let m = material(r, g, b, metal: 0.12,
+                             emission: (r * 0.24, g * 0.37, b * 0.42))
+            m.transparency = 0.56
+            m.blendMode = .alpha
             m.isDoubleSided = true
             return m
         }
@@ -119,7 +131,7 @@ struct DivideModern3D: NSViewRepresentable {
 
         private func buildScene() {
             initialized = true
-            scene.background.contents = NSColor(red: 0.012, green: 0.022, blue: 0.048, alpha: 1)
+            scene.background.contents = NSColor.black
             scene.rootNode.addChildNode(arena)
             for n in [capturedRoot, traceRoot, enemyRoot, relayRoot, waveRoot, player] {
                 arena.addChildNode(n)
@@ -184,14 +196,15 @@ struct DivideModern3D: NSViewRepresentable {
             // while showing real height and side faces.
             let camera = SCNCamera()
             camera.usesOrthographicProjection = true
-            camera.orthographicScale = 56
+            // Frame the entire reactor at ~90% of the available board width.
+            camera.orthographicScale = 28
             camera.zNear = 0.1
             camera.zFar = 400
             camera.wantsHDR = true
             camera.bloomIntensity = 0.24
             camera.bloomThreshold = 1.2
             cameraNode.camera = camera
-            cameraNode.position = SCNVector3(0, 87, 92)
+            cameraNode.position = SCNVector3(0, 97, 83)
             cameraNode.look(at: SCNVector3(0, 0, 0))
             scene.rootNode.addChildNode(cameraNode)
 
@@ -266,6 +279,102 @@ struct DivideModern3D: NSViewRepresentable {
             }
         }
 
+        /// Build a raised 3D containment wall. The collision and capture rules
+        /// remain entirely in the original 2D DivideEngine.
+        private func wall(into parent: SCNNode, centerX: Double, centerY: Double,
+                          horizontal: Bool, cells: Int, temporary: Bool,
+                          slow: Bool = false) {
+            guard cells > 0 else { return }
+            let length = CGFloat(cells)
+            let thickness: CGFloat = temporary ? 0.46 : 0.55
+            let height: CGFloat = temporary ? 3.45 : 2.55
+            let railMaterial = slow ? amber : cyan
+            let glassMaterial = slow ? amberShield : cyanShield
+            let width = horizontal ? length : thickness
+            let depth = horizontal ? thickness : length
+            let root = SCNNode()
+            root.position = Self.location(centerX, centerY)
+            parent.addChildNode(root)
+
+            let footing = box(width, 0.58, depth, steel, chamfer: 0.09)
+            footing.position.y = 0.35
+            root.addChildNode(footing)
+            let membrane = box(horizontal ? length : 0.17, height - 0.80,
+                               horizontal ? 0.17 : length, glassMaterial, chamfer: 0.025)
+            membrane.position.y = height * 0.49 + 0.20
+            membrane.castsShadow = false
+            root.addChildNode(membrane)
+
+            let cap = box(width, 0.22, depth, railMaterial, chamfer: 0.07)
+            cap.position.y = height - 0.10
+            cap.castsShadow = false
+            root.addChildNode(cap)
+            let spine = box(horizontal ? length : 0.085, 0.075,
+                            horizontal ? 0.085 : length, white)
+            spine.position.y = height - 0.27
+            spine.castsShadow = false
+            root.addChildNode(spine)
+
+            if cells >= 3 {
+                let count = max(1, Int(ceil(Double(cells) / 9.0)))
+                for i in 0...count {
+                    let along = -length * 0.5 + CGFloat(i) * length / CGFloat(count)
+                    let post = box(0.47, height, 0.47, steel, chamfer: 0.07)
+                    post.position = horizontal
+                        ? SCNVector3(along, height * 0.5, 0)
+                        : SCNVector3(0, height * 0.5, along)
+                    root.addChildNode(post)
+                    let lamp = box(0.36, 0.19, 0.36, railMaterial, chamfer: 0.04)
+                    lamp.position = SCNVector3(post.position.x, height, post.position.z)
+                    lamp.castsShadow = false
+                    root.addChildNode(lamp)
+                }
+            }
+        }
+
+        /// Run-length merge each safe/unsafe frontier into long, solid barrier
+        /// segments rather than thousands of tiny overlapping cubes.
+        private func updateBoundaryWalls(_ engine: DivideEngine) {
+            // Horizontal runs between adjacent simulation rows.
+            for y in 1..<(DivideEngine.rows - 2) {
+                var x = 1
+                while x < DivideEngine.columns - 1 {
+                    let a = engine.isSafe(DividePoint(x: x, y: y))
+                    let b = engine.isSafe(DividePoint(x: x, y: y + 1))
+                    guard a != b else { x += 1; continue }
+                    let first = x
+                    repeat {
+                        x += 1
+                        if x >= DivideEngine.columns - 1 { break }
+                    } while engine.isSafe(DividePoint(x: x, y: y)) !=
+                            engine.isSafe(DividePoint(x: x, y: y + 1))
+                    wall(into: capturedRoot,
+                         centerX: Double(first + x - 1) * 0.5,
+                         centerY: Double(y) + 0.5,
+                         horizontal: true, cells: x - first, temporary: false)
+                }
+            }
+            // Vertical runs between adjacent simulation columns.
+            for x in 1..<(DivideEngine.columns - 2) {
+                var y = 1
+                while y < DivideEngine.rows - 1 {
+                    let a = engine.isSafe(DividePoint(x: x, y: y))
+                    let b = engine.isSafe(DividePoint(x: x + 1, y: y))
+                    guard a != b else { y += 1; continue }
+                    let first = y
+                    repeat {
+                        y += 1
+                        if y >= DivideEngine.rows - 1 { break }
+                    } while engine.isSafe(DividePoint(x: x, y: y)) !=
+                            engine.isSafe(DividePoint(x: x + 1, y: y))
+                    wall(into: capturedRoot,
+                         centerX: Double(x) + 0.5,
+                         centerY: Double(first + y - 1) * 0.5,
+                         horizontal: false, cells: y - first, temporary: false)
+                }
+            }
+        }
+
         private func updateFloor(_ engine: DivideEngine) {
             var hash: UInt64 = 1469598103934665603
             for c in engine.cells {
@@ -322,6 +431,7 @@ struct DivideModern3D: NSViewRepresentable {
                     }
                 }
             }
+            updateBoundaryWalls(engine)
         }
 
         private func updateTrail(_ engine: DivideEngine) {
@@ -334,12 +444,12 @@ struct DivideModern3D: NSViewRepresentable {
             for index in 1..<points.count {
                 let a = points[index-1], b = points[index]
                 let horizontal = a.y == b.y
-                let beam = box(horizontal ? CGFloat(abs(a.x-b.x))+0.34 : 0.34,
-                               0.19, horizontal ? 0.34 : CGFloat(abs(a.y-b.y))+0.34,
-                               engine.drawMode == .slow ? amber : cyan)
-                beam.position = Self.location(Double(a.x+b.x)/2, Double(a.y+b.y)/2,
-                                              elevation: 0.64)
-                traceRoot.addChildNode(beam)
+                wall(into: traceRoot,
+                     centerX: Double(a.x + b.x) / 2,
+                     centerY: Double(a.y + b.y) / 2,
+                     horizontal: horizontal,
+                     cells: max(abs(a.x - b.x), abs(a.y - b.y)),
+                     temporary: true, slow: engine.drawMode == .slow)
             }
         }
 
