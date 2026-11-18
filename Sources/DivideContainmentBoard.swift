@@ -80,6 +80,7 @@ struct DivideContainmentBoard: View {
         drawFoundation(ctx, size: size, scale: scale)
         drawReactors(ctx, size: size, scale: scale, oscillation: oscillation)
         drawArmor(ctx, size: size, cell: cell, scale: scale, oscillation: oscillation)
+        DivideRestorationDetail().paint(ctx, size: size, engine: engine, clock: clock)
         drawCapture(ctx, size: size, cell: cell, scale: scale)
         drawRaceway(ctx, size: size, cell: cell, scale: scale)
         drawTrace(ctx, cell: cell, scale: scale, oscillation: oscillation)
