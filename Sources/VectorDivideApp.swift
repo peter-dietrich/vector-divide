@@ -10,7 +10,7 @@ struct VectorDivideApp: App {
                 .preferredColorScheme(.dark)
         }
         .defaultSize(width: 1260, height: 810)
-        .commands { CommandGroup(replacing: .newItem) {} }
+        .commands { CommandGroup(replacing: .newItem) {} GameHelpCommands() }
     }
 }
 
