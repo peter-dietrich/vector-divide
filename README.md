@@ -1,6 +1,6 @@
 # Vector Divide — Fun City Arcade
 
-**Version: v0.6.2 (build 8) — 3D camera and reactor environment credibility pass**
+**Version: v0.6.3 (build 9) — rectangular camera alignment**
 
 Vector Divide is an original native macOS territory-capture arcade game inspired by the genre established by the 1981 arcade game Qix. It does not use the original game's code, graphics, sounds, logo or other assets, and is not affiliated with its rights holders.
 
@@ -49,6 +49,12 @@ xcodebuild -project VectorDivide.xcodeproj -scheme VectorDivide -destination 'pl
 | Click game board | Restore keyboard focus |
 
 Start an open line from protected territory. Reconnect to a safe border to capture regions without enemies. Avoid energy anomalies, boundary sparks and the fuse that catches idle open traces. Capture **75%** to complete the level.
+
+## v0.6.3 — Rectangular camera alignment
+
+- Removed horizontal yaw from the fixed orthographic SceneKit camera. Both long side edges now project parallel instead of skewing into a parallelogram.
+- Retained the lowered viewing elevation, solid 3D containment walls, side power manifolds, captured armor, reactor objectives and the existing gameplay plane.
+- This is a camera-only presentation correction. Native Mac visual review is needed to judge the new wall silhouettes and board fit.
 
 ## v0.6.2 — Camera and reactor architecture
 
