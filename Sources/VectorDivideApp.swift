@@ -34,6 +34,7 @@ final class DivideSession: ObservableObject {
     private var lastTime = Date()
     private var promptedForRecord = false
     @Published var pendingMessage: String? = nil
+    @Published var captureFX: DivideCaptureFX? = nil
 
     private var direction: DivideDirection? {
         // Arrow keys and WASD, using native macOS key codes.
@@ -68,6 +69,7 @@ final class DivideSession: ObservableObject {
     func newGame() {
         keys.removeAll()
         engine.start(difficulty, rules: customRules ?? DivideRules())
+        captureFX = nil
         promptedForRecord = false
         lastTime = Date()
         redraw &+= 1
@@ -81,6 +83,7 @@ final class DivideSession: ObservableObject {
     func loadGame(_ save: DivideSave) {
         guard save.snapshot.validSnapshot else { return }
         engine = save.snapshot
+        captureFX = nil
         difficulty = engine.difficulty
         customRules = engine.rules.isDefault ? nil : engine.rules
         if engine.phase == .playing { engine.togglePause() }
@@ -94,7 +97,7 @@ final class DivideSession: ObservableObject {
         customRules = rules?.validated()
         newGame()
     }
-    func nextLevel() { engine.nextLevel(); redraw &+= 1 }
+    func nextLevel() { engine.nextLevel(); captureFX = nil; redraw &+= 1 }
 
     func tick() {
         let now = Date()
@@ -102,7 +105,32 @@ final class DivideSession: ObservableObject {
         lastTime = now
         guard engine.phase == .playing else { return }
         let request: DivideDrawMode? = shiftHeld ? .slow : (keys.contains(49) ? .fast : nil)
+        // A completed line creates an ephemeral renderer-only power-up wave.
+        // No animation data is included in saves, collision detection or the engine.
+        let previousTrail = engine.trail
+        let previousStart = engine.trailStart
+        let oldCells = previousTrail.isEmpty ? [] : engine.cells
         engine.tick(dt, direction: direction, request: request)
+        if !previousTrail.isEmpty && engine.trail.isEmpty &&
+            engine.lastGain > 0 && !oldCells.isEmpty {
+            var restored: [DividePoint] = []
+            for index in engine.cells.indices where oldCells[index] == 0 && engine.cells[index] != 0 {
+                restored.append(DividePoint(x: index % DivideEngine.columns,
+                                            y: index / DivideEngine.columns))
+            }
+            if !restored.isEmpty {
+                captureFX = DivideCaptureFX(
+                    began: Date.timeIntervalSinceReferenceDate,
+                    newCells: restored,
+                    origin: previousTrail.last ?? previousStart ?? engine.player,
+                    gain: engine.lastGain,
+                    award: engine.lastAward)
+            }
+        }
+        if let effect = captureFX,
+           Date.timeIntervalSinceReferenceDate - effect.began >= effect.duration {
+            captureFX = nil
+        }
         redraw &+= 1
         if engine.phase == .gameOver, DivideStore.qualifies(engine.score), !promptedForRecord {
             promptedForRecord = true
@@ -131,7 +159,7 @@ struct DivideWindow: View {
     private let magenta = Color(red: 1, green: 0.36, blue: 0.75)
 
     private var version: String {
-        let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.3.0"
+        let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.4.0"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
         return "v\(v) (\(build))"
     }
@@ -208,7 +236,7 @@ struct DivideWindow: View {
                 .pickerStyle(.segmented)
                 .frame(width: 280)
                 Text(session.modern ?
-                     "REACTOR 01  /  CONTAINMENT ARRAY  /  SOLID ARMOR" :
+                     "REACTOR CORE  /  ARMOR RESTORATION  /  ACTIVE CONTAINMENT" :
                      "ORIGINAL VECTOR GRID  /  CLASSIC RULES")
                     .font(.system(size: 10, weight: .semibold, design: .monospaced))
                     .foregroundStyle(session.modern ? cyan.opacity(0.85) : .white.opacity(0.53))
@@ -228,7 +256,8 @@ struct DivideWindow: View {
                     Group {
                         if session.modern {
                             DivideContainmentBoard(engine: session.engine,
-                                clock: Date.timeIntervalSinceReferenceDate)
+                                clock: Date.timeIntervalSinceReferenceDate,
+                                capture: session.captureFX)
                         } else {
                             DivideBoard(engine: session.engine)
                         }
