@@ -72,7 +72,7 @@ final class DivideSession: ObservableObject {
     func newGame() {
         keys.removeAll()
         engine.start(difficulty, rules: customRules ?? DivideRules())
-        DivideAudio.shared.play(.start)
+        if modern { DivideAudio.shared.play(.start) }
         captureFX = nil
         promptedForRecord = false
         lastTime = Date()
@@ -131,12 +131,12 @@ final class DivideSession: ObservableObject {
                     origin: previousTrail.last ?? previousStart ?? engine.player,
                     gain: engine.lastGain,
                     award: engine.lastAward)
-                DivideAudio.shared.play(.capture, magnitude: engine.lastGain)
+                if modern { DivideAudio.shared.play(.capture, magnitude: engine.lastGain) }
             }
         }
-        if engine.lives < oldLives { DivideAudio.shared.play(.damage) }
-        if engine.phase == .levelClear && oldPhase != .levelClear { DivideAudio.shared.play(.victory) }
-        if previousTrail.isEmpty && !engine.trail.isEmpty { DivideAudio.shared.play(.trace) }
+        if modern && engine.lives < oldLives { DivideAudio.shared.play(.damage) }
+        if modern && engine.phase == .levelClear && oldPhase != .levelClear { DivideAudio.shared.play(.victory) }
+        if modern && previousTrail.isEmpty && !engine.trail.isEmpty { DivideAudio.shared.play(.trace) }
         if let effect = captureFX,
            Date.timeIntervalSinceReferenceDate - effect.began >= effect.duration {
             captureFX = nil
@@ -169,7 +169,7 @@ struct DivideWindow: View {
     private let magenta = Color(red: 1, green: 0.36, blue: 0.75)
 
     private var version: String {
-        let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.4.0"
+        let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.5.0"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
         return "v\(v) (\(build))"
     }
