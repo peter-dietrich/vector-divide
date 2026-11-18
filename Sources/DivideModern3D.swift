@@ -261,9 +261,9 @@ struct DivideModern3D: NSViewRepresentable {
             let camera = SCNCamera()
             camera.usesOrthographicProjection = true
             // Frame the entire reactor at ~90% of the available board width.
-            // 3/4 quarter-angle: 37 degrees up, slight yaw exposes the
-            // vertical face of walls running BOTH north/south and east/west.
-            // Widen the view enough to retain every safe edge and both side bays.
+            // Keep the orthographic camera centered directly on the long axis.
+            // Sideways yaw made the rectangular simulation board read like a
+            // parallelogram. Elevation still shows real wall height and depth.
             camera.orthographicScale = 29.5
             camera.zNear = 0.1
             camera.zFar = 400
@@ -271,7 +271,9 @@ struct DivideModern3D: NSViewRepresentable {
             camera.bloomIntensity = 0.24
             camera.bloomThreshold = 1.2
             cameraNode.camera = camera
-            cameraNode.position = SCNVector3(29, 80, 106)
+            // Zero horizontal yaw keeps both side edges parallel on screen.
+            // The ~43-degree elevation preserves a convincing 3D deck.
+            cameraNode.position = SCNVector3(0, 96, 104)
             cameraNode.look(at: SCNVector3(0, 0, 0))
             scene.rootNode.addChildNode(cameraNode)
 
