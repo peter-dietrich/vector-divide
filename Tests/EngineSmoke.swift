@@ -89,6 +89,29 @@ struct EngineSmoke {
         let validated = wild.validated()
         precondition(validated.extraLives == 6 && validated.enemySpeed == 4.0)
         precondition(validated.targetPercent == 95 && validated.fuseDelay == 0.4)
-        print("PASS — Vector Divide: capture, enemies, levels, fuse, Codable saves, custom rules, 2.5x baseline")
+        // Modern-only EMP freezes anomalies, but normal enemy movement resumes.
+        var emp = DivideEngine()
+        emp.start(.veteran)
+        let held = emp.enemies[0].position
+        emp.tick(1.0/30.0, direction: nil, request: nil, modern: true, empActive: true)
+        precondition(emp.enemies[0].position.x == held.x && emp.enemies[0].position.y == held.y,
+                     "Modern relay EMP must immobilize anomalies")
+        emp.tick(1.0/30.0, direction: nil, request: nil, modern: true, empActive: false)
+        precondition(emp.enemies[0].position.x != held.x || emp.enemies[0].position.y != held.y,
+                     "Enemy movement must resume after EMP")
+
+        // A trace-hunting enemy steers toward an exposed path only in Modern.
+        var chase = DivideEngine()
+        chase.start(.veteran)
+        chase.enemies = [DivideEnemy(position: DivideVector(x: 10, y: 10),
+                                     velocity: DivideVector(x: 0, y: 12), spin: 0)]
+        chase.trail = [DividePoint(x: 20, y: 10)]
+        var classic = chase
+        chase.tick(1.0/30.0, direction: nil, request: nil, modern: true)
+        classic.tick(1.0/30.0, direction: nil, request: nil)
+        precondition(chase.enemies[0].velocity.x > classic.enemies[0].velocity.x,
+                     "The Modern hunter must steer toward exposed territory")
+        precondition(DivideReactorRelays.positions.count == 4)
+        print("PASS — Vector Divide: capture, enemies, levels, fuse, saves, custom rules, 2.5x baseline, Modern EMP/hunter")
     }
 }
