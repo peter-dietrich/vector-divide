@@ -59,13 +59,13 @@ struct DivideModern3D: NSViewRepresentable {
         private var previousRelaySet = Set<Int>()
         private var lastCaptureTime = -1.0
         private var initialized = false
-        private let steel = Self.material(0.085, 0.16, 0.24, metal: 0.78)
-        private let active = Self.material(0.13, 0.42, 0.50, metal: 0.73, emission: (0.015, 0.11, 0.15))
-        private let purple = Self.material(0.31, 0.19, 0.45, metal: 0.70, emission: (0.06, 0.01, 0.11))
-        private let cyan = Self.material(0.21, 0.78, 0.93, metal: 0.25, emission: (0.18, 0.57, 0.72))
-        private let amber = Self.material(0.96, 0.49, 0.16, metal: 0.33, emission: (0.51, 0.12, 0.015))
-        private let black = Self.material(0.020, 0.038, 0.071, metal: 0.43)
-        private let white = Self.material(0.69, 0.96, 1.0, metal: 0.13, emission: (0.32, 0.64, 0.72))
+        private let steel = Coordinator.material(0.085, 0.16, 0.24, metal: 0.78)
+        private let active = Coordinator.material(0.13, 0.42, 0.50, metal: 0.73, emission: (0.015, 0.11, 0.15))
+        private let purple = Coordinator.material(0.31, 0.19, 0.45, metal: 0.70, emission: (0.06, 0.01, 0.11))
+        private let cyan = Coordinator.material(0.21, 0.78, 0.93, metal: 0.25, emission: (0.18, 0.57, 0.72))
+        private let amber = Coordinator.material(0.96, 0.49, 0.16, metal: 0.33, emission: (0.51, 0.12, 0.015))
+        private let black = Coordinator.material(0.020, 0.038, 0.071, metal: 0.43)
+        private let white = Coordinator.material(0.69, 0.96, 1.0, metal: 0.13, emission: (0.32, 0.64, 0.72))
         private var enemies = [SCNNode]()
         private var sentries = [SCNNode]()
 
