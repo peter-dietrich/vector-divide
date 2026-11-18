@@ -2,6 +2,16 @@ import AppKit
 import SceneKit
 import SwiftUI
 
+/// Ephemeral renderer-only effect; never encoded into a saved game.
+struct DivideCaptureFX {
+    let began: Double
+    let newCells: [DividePoint]
+    let origin: DividePoint
+    let gain: Double
+    let award: Int
+    let duration: Double = 1.55
+}
+
 /// Real SceneKit geometry, depth-tested materials, directional lighting and
 /// an orthographic 3/4 camera. All positions are projected from DivideEngine.
 /// This view never owns gameplay state, scores, or persistence.
@@ -22,6 +32,7 @@ struct DivideModern3D: NSViewRepresentable {
         view.preferredFramesPerSecond = 60
         view.allowsCameraControl = false
         view.autoenablesDefaultLighting = false
+        view.pointOfView = context.coordinator.cameraNode
         context.coordinator.update(engine: engine, capture: capture,
                                    poweredRelays: poweredRelays, empRemaining: empRemaining)
         return view
@@ -35,6 +46,7 @@ struct DivideModern3D: NSViewRepresentable {
     @MainActor
     final class Coordinator {
         let scene = SCNScene()
+        let cameraNode = SCNNode()
         private let arena = SCNNode()
         private let capturedRoot = SCNNode()
         private let traceRoot = SCNNode()
@@ -47,13 +59,13 @@ struct DivideModern3D: NSViewRepresentable {
         private var previousRelaySet = Set<Int>()
         private var lastCaptureTime = -1.0
         private var initialized = false
-        private let steel = material(0.085, 0.16, 0.24, metal: 0.78)
-        private let active = material(0.13, 0.42, 0.50, metal: 0.73, emission: (0.015, 0.11, 0.15))
-        private let purple = material(0.31, 0.19, 0.45, metal: 0.70, emission: (0.06, 0.01, 0.11))
-        private let cyan = material(0.21, 0.78, 0.93, metal: 0.25, emission: (0.18, 0.57, 0.72))
-        private let amber = material(0.96, 0.49, 0.16, metal: 0.33, emission: (0.51, 0.12, 0.015))
-        private let black = material(0.020, 0.038, 0.071, metal: 0.43)
-        private let white = material(0.69, 0.96, 1.0, metal: 0.13, emission: (0.32, 0.64, 0.72))
+        private let steel = Self.material(0.085, 0.16, 0.24, metal: 0.78)
+        private let active = Self.material(0.13, 0.42, 0.50, metal: 0.73, emission: (0.015, 0.11, 0.15))
+        private let purple = Self.material(0.31, 0.19, 0.45, metal: 0.70, emission: (0.06, 0.01, 0.11))
+        private let cyan = Self.material(0.21, 0.78, 0.93, metal: 0.25, emission: (0.18, 0.57, 0.72))
+        private let amber = Self.material(0.96, 0.49, 0.16, metal: 0.33, emission: (0.51, 0.12, 0.015))
+        private let black = Self.material(0.020, 0.038, 0.071, metal: 0.43)
+        private let white = Self.material(0.69, 0.96, 1.0, metal: 0.13, emission: (0.32, 0.64, 0.72))
         private var enemies = [SCNNode]()
         private var sentries = [SCNNode]()
 
@@ -178,12 +190,10 @@ struct DivideModern3D: NSViewRepresentable {
             camera.wantsHDR = true
             camera.bloomIntensity = 0.24
             camera.bloomThreshold = 1.2
-            let cameraNode = SCNNode()
             cameraNode.camera = camera
             cameraNode.position = SCNVector3(0, 87, 92)
             cameraNode.look(at: SCNVector3(0, 0, 0))
             scene.rootNode.addChildNode(cameraNode)
-            scene.rootNode.camera = cameraNode
 
             let ambient = SCNLight()
             ambient.type = .ambient
