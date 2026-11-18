@@ -1,6 +1,6 @@
 # Vector Divide — Fun City Arcade
 
-**Version: v0.6.0 (build 6) — native angled 3D Containment prototype**
+**Version: v0.6.1 (build 7) — enlarged 3D reactor and raised containment walls**
 
 Vector Divide is an original native macOS territory-capture arcade game inspired by the genre established by the 1981 arcade game Qix. It does not use the original game's code, graphics, sounds, logo or other assets, and is not affiliated with its rights holders.
 
@@ -49,6 +49,13 @@ xcodebuild -project VectorDivide.xcodeproj -scheme VectorDivide -destination 'pl
 | Click game board | Restore keyboard focus |
 
 Start an open line from protected territory. Reconnect to a safe border to capture regions without enemies. Avoid energy anomalies, boundary sparks and the fuse that catches idle open traces. Capture **75%** to complete the level.
+
+## v0.6.1 — Enlarged arena and structural energy dividers
+
+- Camera framing moved substantially closer so the reactor and its capture paths fill the playable viewport rather than appearing as a small distant platform.
+- Active open lines are now elevated 3D walls instead of narrow floor beams. Each has a heavy footing, translucent illuminated energy membrane, bright top rail and periodic structural posts.
+- Completed safe/unsafe dividing boundaries build matching permanent containment walls. Straight neighboring segments merge into longer wall pieces to avoid thousands of nodes.
+- Same 2D movement and collision logic underneath, no changes to Classic mode, save encoding, or existing game balance. Native Mac visual testing still required.
 
 ## v0.6.0 — SceneKit 3D Containment vertical slice
 
