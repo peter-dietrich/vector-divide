@@ -8,8 +8,6 @@
   B00000000000000000000002 = { isa = PBXBuildFile; fileRef = B00000000000000000000005; };
   B00000000000000000000003 = { isa = PBXBuildFile; fileRef = B00000000000000000000006; };
   B00000000000000000000014 = { isa = PBXBuildFile; fileRef = B00000000000000000000015; };
-  B00000000000000000000016 = { isa = PBXBuildFile; fileRef = B00000000000000000000017; };
-  B00000000000000000000018 = { isa = PBXBuildFile; fileRef = B00000000000000000000019; };
   B00000000000000000000020 = { isa = PBXBuildFile; fileRef = B00000000000000000000021; };
   B00000000000000000000022 = { isa = PBXBuildFile; fileRef = B00000000000000000000023; };
   B00000000000000000000024 = { isa = PBXBuildFile; fileRef = B00000000000000000000025; };
@@ -17,8 +15,6 @@
   B00000000000000000000005 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideEngine.swift; sourceTree = "<group>"; };
   B00000000000000000000006 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideCanvas.swift; sourceTree = "<group>"; };
   B00000000000000000000015 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideStore.swift; sourceTree = "<group>"; };
-  B00000000000000000000017 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideContainmentBoard.swift; sourceTree = "<group>"; };
-  B00000000000000000000019 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideRestorationDetail.swift; sourceTree = "<group>"; };
   B00000000000000000000021 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideAudio.swift; sourceTree = "<group>"; };
   B00000000000000000000023 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideTacticalMap.swift; sourceTree = "<group>"; };
   B00000000000000000000025 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideModern3D.swift; sourceTree = "<group>"; };
