@@ -174,7 +174,7 @@ struct DivideModern3D: NSViewRepresentable {
             for z in [-25.0, 25.0] {
                 for y in [0.3, 1.1] {
                     let pipe = cylinder(0.23, 71.0, steel)
-                    pipe.eulerAngles.z = Float.pi / 2
+                    pipe.eulerAngles.z = .pi / 2
                     pipe.position = SCNVector3(0, Float(y), Float(z))
                     arena.addChildNode(pipe)
                 }
@@ -231,7 +231,7 @@ struct DivideModern3D: NSViewRepresentable {
             let hull = SCNPyramid(width: 2.2, height: 1.35, length: 2.6)
             hull.materials = [steel]
             let body = SCNNode(geometry: hull)
-            body.eulerAngles.x = Float.pi
+            body.eulerAngles.x = .pi
             player.addChildNode(body)
             let ring = torus(1.20, 0.095, cyan)
             ring.position.y = 0.15
@@ -317,7 +317,7 @@ struct DivideModern3D: NSViewRepresentable {
                     capturedRoot.addChildNode(vent)
                     for offset in [-0.65, 0.0, 0.65] {
                         let bar = box(0.13, 0.10, 0.85, cyan)
-                        bar.position = SCNVector3(p.x + Float(offset), 0.80, p.z)
+                        bar.position = SCNVector3(p.x + CGFloat(offset), 0.80, p.z)
                         capturedRoot.addChildNode(bar)
                     }
                 }
@@ -348,7 +348,7 @@ struct DivideModern3D: NSViewRepresentable {
             let body = orb(0.93, steel)
             node.addChildNode(body)
             let ring = torus(1.14, 0.13, amber)
-            ring.eulerAngles.x = Float.pi * 0.16
+            ring.eulerAngles.x = .pi * 0.16
             node.addChildNode(ring)
             let nucleus = orb(0.37, amber)
             nucleus.position.y = 0.35
@@ -357,7 +357,7 @@ struct DivideModern3D: NSViewRepresentable {
                 let blade = box(0.25, 0.18, 1.05, amber, chamfer: 0.07)
                 let angle = Float(n) * Float.pi/2
                 blade.position = SCNVector3(sin(angle)*1.06, 0, cos(angle)*1.06)
-                blade.eulerAngles.y = angle
+                blade.eulerAngles.y = CGFloat(angle)
                 node.addChildNode(blade)
             }
             return node
@@ -379,7 +379,7 @@ struct DivideModern3D: NSViewRepresentable {
                 let node = enemies[i]
                 node.position = Self.location(enemy.position.x, enemy.position.y,
                                               elevation: 1.48)
-                node.eulerAngles.y = Float(enemy.spin)
+                node.eulerAngles.y = CGFloat(enemy.spin)
                 node.opacity = empRemaining > 0 ? 0.48 : 1.0
             }
             while sentries.count < engine.sparks.count {
