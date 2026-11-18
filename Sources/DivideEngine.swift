@@ -81,6 +81,15 @@ struct DivideRules: Codable, Equatable {
     var isDefault: Bool { self == DivideRules() }
 }
 
+/// Fixed power-relay objectives shared with the modern scene and rules.
+/// The relays occupy the simulation plane but do not block movement.
+enum DivideReactorRelays {
+    static let positions: [DividePoint] = [
+        DividePoint(x: 14, y: 10), DividePoint(x: 53, y: 10),
+        DividePoint(x: 14, y: 33), DividePoint(x: 53, y: 33)
+    ]
+}
+
 struct DivideEngine: Codable {
     static let columns = 68
     static let rows = 44
@@ -195,7 +204,9 @@ struct DivideEngine: Codable {
 
     // Keys are supplied by the UI as a held direction and optional draw modifier.
     // Once an exposed line starts, the marker can turn corners without holding the modifier.
-    mutating func tick(_ dt: Double, direction: DivideDirection?, request: DivideDrawMode?) {
+    mutating func tick(_ dt: Double, direction: DivideDirection?,
+                       request: DivideDrawMode?, modern: Bool = false,
+                       empActive: Bool = false) {
         guard phase == .playing else { return }
         let delta = max(0, min(dt, 1.0 / 20.0))
         invulnerableTime = max(0, invulnerableTime - delta)
@@ -225,7 +236,9 @@ struct DivideEngine: Codable {
             fuseIndex = nil
             fuseClock = 0
         }
-        moveEnemies(delta)
+        // Modern-only EMP freezes anomaly movement for a short window when
+        // a captured field powers a relay. Classic physics remain unchanged.
+        if !modern || !empActive { moveEnemies(delta, hunter: modern) }
         moveSparks(delta)
         detectHits()
     }
@@ -322,9 +335,31 @@ struct DivideEngine: Codable {
         return inBounds(p) && !isSafe(p)
     }
 
-    private mutating func moveEnemies(_ dt: Double) {
+    private mutating func moveEnemies(_ dt: Double, hunter: Bool) {
         for i in enemies.indices {
             var enemy = enemies[i]
+            // One Modern anomaly actively intercepts exposed traces instead of
+            // passively bouncing. It remains subject to the original collision
+            // and safe-cell occupancy rules, and does not affect Classic.
+            if hunter && i == 0 && !trail.isEmpty {
+                let target = trail[trail.count - 1]
+                let dx = Double(target.x) - enemy.position.x
+                let dy = Double(target.y) - enemy.position.y
+                let distance = hypot(dx, dy)
+                if distance > 0.25 && distance < 28 {
+                    let speed = hypot(enemy.velocity.x, enemy.velocity.y)
+                    let desiredX = dx / distance * speed
+                    let desiredY = dy / distance * speed
+                    let steer = min(1.0, dt * 1.85)
+                    let x = enemy.velocity.x * (1 - steer) + desiredX * steer
+                    let y = enemy.velocity.y * (1 - steer) + desiredY * steer
+                    let length = hypot(x, y)
+                    if length > 0.01 {
+                        enemy.velocity.x = x / length * speed
+                        enemy.velocity.y = y / length * speed
+                    }
+                }
+            }
             let nx = enemy.position.x + enemy.velocity.x * dt
             let ny = enemy.position.y + enemy.velocity.y * dt
             if canOccupy(nx, enemy.position.y) { enemy.position.x = nx }
