@@ -32,9 +32,9 @@ struct DivideModern3D: NSViewRepresentable {
         view.preferredFramesPerSecond = 60
         view.allowsCameraControl = false
         view.autoenablesDefaultLighting = false
-        view.pointOfView = context.coordinator.cameraNode
         context.coordinator.update(engine: engine, capture: capture,
                                    poweredRelays: poweredRelays, empRemaining: empRemaining)
+        view.pointOfView = context.coordinator.cameraNode
         return view
     }
 
@@ -184,7 +184,7 @@ struct DivideModern3D: NSViewRepresentable {
             // while showing real height and side faces.
             let camera = SCNCamera()
             camera.usesOrthographicProjection = true
-            camera.orthographicScale = 75
+            camera.orthographicScale = 56
             camera.zNear = 0.1
             camera.zFar = 400
             camera.wantsHDR = true
