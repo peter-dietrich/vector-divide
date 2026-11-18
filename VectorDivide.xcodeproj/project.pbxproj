@@ -10,16 +10,20 @@
   B00000000000000000000014 = { isa = PBXBuildFile; fileRef = B00000000000000000000015; };
   B00000000000000000000016 = { isa = PBXBuildFile; fileRef = B00000000000000000000017; };
   B00000000000000000000018 = { isa = PBXBuildFile; fileRef = B00000000000000000000019; };
+  B00000000000000000000020 = { isa = PBXBuildFile; fileRef = B00000000000000000000021; };
+  B00000000000000000000022 = { isa = PBXBuildFile; fileRef = B00000000000000000000023; };
   B00000000000000000000004 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/VectorDivideApp.swift; sourceTree = "<group>"; };
   B00000000000000000000005 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideEngine.swift; sourceTree = "<group>"; };
   B00000000000000000000006 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideCanvas.swift; sourceTree = "<group>"; };
   B00000000000000000000015 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideStore.swift; sourceTree = "<group>"; };
   B00000000000000000000017 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideContainmentBoard.swift; sourceTree = "<group>"; };
   B00000000000000000000019 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideRestorationDetail.swift; sourceTree = "<group>"; };
+  B00000000000000000000021 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideAudio.swift; sourceTree = "<group>"; };
+  B00000000000000000000023 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideTacticalMap.swift; sourceTree = "<group>"; };
   B00000000000000000000007 = { isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VectorDivide.app; sourceTree = BUILT_PRODUCTS_DIR; };
-  B00000000000000000000008 = { isa = PBXGroup; children = (B00000000000000000000004, B00000000000000000000005, B00000000000000000000006, B00000000000000000000015, B00000000000000000000017, B00000000000000000000019, B00000000000000000000009); sourceTree = "<group>"; };
+  B00000000000000000000008 = { isa = PBXGroup; children = (B00000000000000000000004, B00000000000000000000005, B00000000000000000000006, B00000000000000000000015, B00000000000000000000017, B00000000000000000000019, B00000000000000000000021, B00000000000000000000023, B00000000000000000000009); sourceTree = "<group>"; };
   B00000000000000000000009 = { isa = PBXGroup; children = (B00000000000000000000007); name = Products; sourceTree = "<group>"; };
-  B0000000000000000000000A = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (B00000000000000000000001, B00000000000000000000002, B00000000000000000000003, B00000000000000000000014, B00000000000000000000016, B00000000000000000000018); runOnlyForDeploymentPostprocessing = 0; };
+  B0000000000000000000000A = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (B00000000000000000000001, B00000000000000000000002, B00000000000000000000003, B00000000000000000000014, B00000000000000000000016, B00000000000000000000018, B00000000000000000000020, B00000000000000000000022); runOnlyForDeploymentPostprocessing = 0; };
   B0000000000000000000000B = { isa = PBXNativeTarget; buildConfigurationList = B0000000000000000000000E; buildPhases = (B0000000000000000000000A); buildRules = (); dependencies = (); name = VectorDivide; productName = VectorDivide; productReference = B00000000000000000000007; productType = "com.apple.product-type.application"; };
   B0000000000000000000000C = {
    isa = PBXProject;
@@ -39,13 +43,13 @@
   B0000000000000000000000F = { isa = XCConfigurationList; buildConfigurations = (B00000000000000000000012, B00000000000000000000013); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
   B00000000000000000000010 = { isa = XCBuildConfiguration; buildSettings = {
    CODE_SIGNING_ALLOWED = NO;
-   CURRENT_PROJECT_VERSION = 4;
+   CURRENT_PROJECT_VERSION = 5;
    GENERATE_INFOPLIST_FILE = YES;
    INFOPLIST_KEY_CFBundleDisplayName = "Vector Divide";
    INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
    INFOPLIST_KEY_NSHighResolutionCapable = YES;
    MACOSX_DEPLOYMENT_TARGET = 14.0;
-   MARKETING_VERSION = 0.4.0;
+   MARKETING_VERSION = 0.5.0;
    PRODUCT_BUNDLE_IDENTIFIER = "io.vectordivide.game";
    PRODUCT_NAME = "$(TARGET_NAME)";
    SUPPORTED_PLATFORMS = macosx;
@@ -53,13 +57,13 @@
   }; name = Debug; };
   B00000000000000000000011 = { isa = XCBuildConfiguration; buildSettings = {
    CODE_SIGNING_ALLOWED = NO;
-   CURRENT_PROJECT_VERSION = 4;
+   CURRENT_PROJECT_VERSION = 5;
    GENERATE_INFOPLIST_FILE = YES;
    INFOPLIST_KEY_CFBundleDisplayName = "Vector Divide";
    INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
    INFOPLIST_KEY_NSHighResolutionCapable = YES;
    MACOSX_DEPLOYMENT_TARGET = 14.0;
-   MARKETING_VERSION = 0.4.0;
+   MARKETING_VERSION = 0.5.0;
    PRODUCT_BUNDLE_IDENTIFIER = "io.vectordivide.game";
    PRODUCT_NAME = "$(TARGET_NAME)";
    SUPPORTED_PLATFORMS = macosx;
