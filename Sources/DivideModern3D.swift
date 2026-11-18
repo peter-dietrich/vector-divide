@@ -12,6 +12,17 @@ struct DivideCaptureFX {
     let duration: Double = 1.55
 }
 
+/// Resizing must update the orthographic fit even when a game is paused.
+@MainActor
+private final class DivideAdaptiveSceneView: SCNView {
+    var onViewportChange: ((CGSize) -> Void)?
+
+    override func layout() {
+        super.layout()
+        onViewportChange?(bounds.size)
+    }
+}
+
 /// Real SceneKit geometry, depth-tested materials, directional lighting and
 /// an orthographic 3/4 camera. All positions are projected from DivideEngine.
 /// This view never owns gameplay state, scores, or persistence.
@@ -24,7 +35,10 @@ struct DivideModern3D: NSViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeNSView(context: Context) -> SCNView {
-        let view = SCNView(frame: .zero)
+        let view = DivideAdaptiveSceneView(frame: .zero)
+        view.onViewportChange = { [weak coordinator = context.coordinator] size in
+            coordinator?.fitCamera(to: size)
+        }
         view.scene = context.coordinator.scene
         view.backgroundColor = .black
         view.antialiasingMode = .multisampling4X
@@ -35,12 +49,14 @@ struct DivideModern3D: NSViewRepresentable {
         context.coordinator.update(engine: engine, capture: capture,
                                    poweredRelays: poweredRelays, empRemaining: empRemaining)
         view.pointOfView = context.coordinator.cameraNode
+        context.coordinator.fitCamera(to: view.bounds.size)
         return view
     }
 
     func updateNSView(_ view: SCNView, context: Context) {
         context.coordinator.update(engine: engine, capture: capture,
                                    poweredRelays: poweredRelays, empRemaining: empRemaining)
+        context.coordinator.fitCamera(to: view.bounds.size)
     }
 
     @MainActor
@@ -59,6 +75,7 @@ struct DivideModern3D: NSViewRepresentable {
         private var previousRelaySet = Set<Int>()
         private var lastCaptureTime = -1.0
         private var initialized = false
+        private var lastFittedSize = CGSize.zero
         private let steel = Coordinator.material(0.085, 0.16, 0.24, metal: 0.78)
         private let active = Coordinator.material(0.13, 0.42, 0.50, metal: 0.73, emission: (0.015, 0.11, 0.15))
         private let purple = Coordinator.material(0.31, 0.19, 0.45, metal: 0.70, emission: (0.06, 0.01, 0.11))
@@ -200,6 +217,46 @@ struct DivideModern3D: NSViewRepresentable {
             }
         }
 
+        /// SceneKit's orthographicScale is the vertical half-frustum.
+        /// Fit the complete industrial arena with aspect-aware margins so the
+        /// field remains large on standard, ultrawide and resized windows.
+        /// Camera yaw/pitch are fixed; only zoom adapts to the actual viewport.
+        func fitCamera(to size: CGSize) {
+            guard initialized, size.width > 1, size.height > 1,
+                  let camera = cameraNode.camera else { return }
+            guard abs(size.width - lastFittedSize.width) > 0.5 ||
+                  abs(size.height - lastFittedSize.height) > 0.5 else { return }
+            lastFittedSize = size
+
+            // Fixed world envelope of playable deck, side manifolds and
+            // rear distribution panel. Bounds are not based on moving drones
+            // or temporary capture effects, so there is no camera pumping.
+            var minX = CGFloat.greatestFiniteMagnitude
+            var maxX = -CGFloat.greatestFiniteMagnitude
+            var minY = CGFloat.greatestFiniteMagnitude
+            var maxY = -CGFloat.greatestFiniteMagnitude
+            for x in [-40.0, 40.0] {
+                for y in [-1.8, 4.2] {
+                    for z in [-27.4, 27.4] {
+                        let local = cameraNode.convertPosition(
+                            SCNVector3(x, y, z), from: scene.rootNode)
+                        minX = min(minX, local.x)
+                        maxX = max(maxX, local.x)
+                        minY = min(minY, local.y)
+                        maxY = max(maxY, local.y)
+                    }
+                }
+            }
+            let horizontalRadius = max(abs(minX), abs(maxX))
+            let verticalRadius = max(abs(minY), abs(maxY))
+            let aspect = size.width / size.height
+            // 96% of available horizontal area, 87% vertical; all apparatus
+            // remains on-screen rather than clipping at unusual window sizes.
+            let horizontalFit = horizontalRadius / (aspect * 0.96)
+            let verticalFit = verticalRadius / 0.87
+            camera.orthographicScale = max(12, max(horizontalFit, verticalFit))
+        }
+
         private func buildScene() {
             initialized = true
             scene.background.contents = NSColor.black
@@ -260,10 +317,8 @@ struct DivideModern3D: NSViewRepresentable {
             // while showing real height and side faces.
             let camera = SCNCamera()
             camera.usesOrthographicProjection = true
-            // Frame the entire reactor at ~90% of the available board width.
-            // Keep the orthographic camera centered directly on the long axis.
-            // Sideways yaw made the rectangular simulation board read like a
-            // parallelogram. Elevation still shows real wall height and depth.
+            // Temporary initial zoom; fitCamera sets the correct value once
+            // the SCNView has a measurable size.
             camera.orthographicScale = 29.5
             camera.zNear = 0.1
             camera.zFar = 400
@@ -271,9 +326,10 @@ struct DivideModern3D: NSViewRepresentable {
             camera.bloomIntensity = 0.24
             camera.bloomThreshold = 1.2
             cameraNode.camera = camera
-            // Zero horizontal yaw keeps both side edges parallel on screen.
-            // The ~43-degree elevation preserves a convincing 3D deck.
-            cameraNode.position = SCNVector3(0, 96, 104)
+            // Half of v0.6.2's sideways yaw, with a similar low pitch.
+            // Deliberate, moderate trapezoid/skew makes vertical wall faces
+            // visible without the strong rotation of the earlier version.
+            cameraNode.position = SCNVector3(14, 88, 112)
             cameraNode.look(at: SCNVector3(0, 0, 0))
             scene.rootNode.addChildNode(cameraNode)
 
