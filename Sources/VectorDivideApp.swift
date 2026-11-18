@@ -35,6 +35,8 @@ final class DivideSession: ObservableObject {
     private var promptedForRecord = false
     @Published var pendingMessage: String? = nil
     @Published var captureFX: DivideCaptureFX? = nil
+    @Published var poweredRelays: Set<Int> = []
+    @Published var empRemaining: Double = 0
     @Published var soundEnabled = DivideAudio.shared.enabled {
         didSet { DivideAudio.shared.enabled = soundEnabled }
     }
@@ -55,7 +57,7 @@ final class DivideSession: ObservableObject {
         case 36, 76: // Return or keypad Enter
             switch engine.phase {
             case .ready, .gameOver: newGame()
-            case .levelClear: engine.nextLevel()
+            case .levelClear: nextLevel()
             case .paused: engine.togglePause()
             case .playing: break
             }
@@ -74,6 +76,8 @@ final class DivideSession: ObservableObject {
         engine.start(difficulty, rules: customRules ?? DivideRules())
         if modern { DivideAudio.shared.play(.start) }
         captureFX = nil
+        poweredRelays = []
+        empRemaining = 0
         promptedForRecord = false
         lastTime = Date()
         redraw &+= 1
@@ -88,6 +92,10 @@ final class DivideSession: ObservableObject {
         guard save.snapshot.validSnapshot else { return }
         engine = save.snapshot
         captureFX = nil
+        poweredRelays = Set(DivideReactorRelays.positions.indices.filter {
+            engine.isSafe(DivideReactorRelays.positions[$0])
+        })
+        empRemaining = 0
         difficulty = engine.difficulty
         customRules = engine.rules.isDefault ? nil : engine.rules
         if engine.phase == .playing { engine.togglePause() }
@@ -101,7 +109,13 @@ final class DivideSession: ObservableObject {
         customRules = rules?.validated()
         newGame()
     }
-    func nextLevel() { engine.nextLevel(); captureFX = nil; redraw &+= 1 }
+    func nextLevel() {
+        engine.nextLevel()
+        captureFX = nil
+        poweredRelays = []
+        empRemaining = 0
+        redraw &+= 1
+    }
 
     func tick() {
         let now = Date()
@@ -111,12 +125,14 @@ final class DivideSession: ObservableObject {
         let request: DivideDrawMode? = shiftHeld ? .slow : (keys.contains(49) ? .fast : nil)
         // A completed line creates an ephemeral renderer-only power-up wave.
         // No animation data is included in saves, collision detection or the engine.
+        if modern { empRemaining = max(0, empRemaining - max(0, min(dt, 0.05))) }
         let oldLives = engine.lives
         let oldPhase = engine.phase
         let previousTrail = engine.trail
         let previousStart = engine.trailStart
         let oldCells = previousTrail.isEmpty ? [] : engine.cells
-        engine.tick(dt, direction: direction, request: request)
+        engine.tick(dt, direction: direction, request: request,
+                    modern: modern, empActive: modern && empRemaining > 0)
         if !previousTrail.isEmpty && engine.trail.isEmpty &&
             engine.lastGain > 0 && !oldCells.isEmpty {
             var restored: [DividePoint] = []
@@ -131,7 +147,17 @@ final class DivideSession: ObservableObject {
                     origin: previousTrail.last ?? previousStart ?? engine.player,
                     gain: engine.lastGain,
                     award: engine.lastAward)
-                if modern { DivideAudio.shared.play(.capture, magnitude: engine.lastGain) }
+                if modern {
+                    DivideAudio.shared.play(.capture, magnitude: engine.lastGain)
+                    let active = Set(DivideReactorRelays.positions.indices.filter {
+                        engine.isSafe(DivideReactorRelays.positions[$0])
+                    })
+                    if !active.subtracting(poweredRelays).isEmpty {
+                        empRemaining = 2.2
+                        DivideAudio.shared.play(.victory)
+                    }
+                    poweredRelays = active
+                }
             }
         }
         if modern && engine.lives < oldLives { DivideAudio.shared.play(.damage) }
@@ -169,7 +195,7 @@ struct DivideWindow: View {
     private let magenta = Color(red: 1, green: 0.36, blue: 0.75)
 
     private var version: String {
-        let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.5.0"
+        let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.6.0"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
         return "v\(v) (\(build))"
     }
@@ -246,7 +272,7 @@ struct DivideWindow: View {
                 .pickerStyle(.segmented)
                 .frame(width: 280)
                 Text(session.modern ?
-                     "REACTOR CORE  /  ARMOR RESTORATION  /  ACTIVE CONTAINMENT" :
+                     "3D REACTOR  /  POWER RELAYS  /  HUNTER INTERCEPT" :
                      "ORIGINAL VECTOR GRID  /  CLASSIC RULES")
                     .font(.system(size: 10, weight: .semibold, design: .monospaced))
                     .foregroundStyle(session.modern ? cyan.opacity(0.85) : .white.opacity(0.53))
@@ -273,9 +299,10 @@ struct DivideWindow: View {
                 HStack(spacing: 18) {
                     Group {
                         if session.modern {
-                            DivideContainmentBoard(engine: session.engine,
-                                clock: Date.timeIntervalSinceReferenceDate,
-                                capture: session.captureFX)
+                            DivideModern3D(engine: session.engine,
+                                capture: session.captureFX,
+                                poweredRelays: session.poweredRelays,
+                                empRemaining: session.empRemaining)
                         } else {
                             DivideBoard(engine: session.engine)
                         }
@@ -406,7 +433,12 @@ struct DivideWindow: View {
                 DivideTacticalMap(engine: session.engine)
                     .aspectRatio(CGFloat(DivideEngine.columns) / CGFloat(DivideEngine.rows), contentMode: .fit)
                     .overlay(Rectangle().stroke(cyan.opacity(0.25), lineWidth: 1))
-                Text(session.engine.isDrawing ? "EXPOSED CIRCUIT — CONNECT TO SEAL" : "CORE STATUS — ACTIVE")
+                Text("REACTOR RELAYS  \(session.poweredRelays.count)/4")
+                    .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                    .foregroundStyle(amber)
+                Text(session.empRemaining > 0
+                     ? String(format: "EMP ACTIVE  %.1f SEC", session.empRemaining)
+                     : session.engine.isDrawing ? "HUNTER INTERCEPT / EXPOSED" : "CORE STATUS — ACTIVE")
                     .font(.system(size: 9, weight: .bold, design: .monospaced))
                     .foregroundStyle(session.engine.isDrawing ? amber : cyan)
                 if let effect = session.captureFX {
