@@ -9,15 +9,17 @@
   B00000000000000000000003 = { isa = PBXBuildFile; fileRef = B00000000000000000000006; };
   B00000000000000000000014 = { isa = PBXBuildFile; fileRef = B00000000000000000000015; };
   B00000000000000000000016 = { isa = PBXBuildFile; fileRef = B00000000000000000000017; };
+  B00000000000000000000018 = { isa = PBXBuildFile; fileRef = B00000000000000000000019; };
   B00000000000000000000004 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/VectorDivideApp.swift; sourceTree = "<group>"; };
   B00000000000000000000005 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideEngine.swift; sourceTree = "<group>"; };
   B00000000000000000000006 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideCanvas.swift; sourceTree = "<group>"; };
   B00000000000000000000015 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideStore.swift; sourceTree = "<group>"; };
   B00000000000000000000017 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideContainmentBoard.swift; sourceTree = "<group>"; };
+  B00000000000000000000019 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DivideRestorationDetail.swift; sourceTree = "<group>"; };
   B00000000000000000000007 = { isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VectorDivide.app; sourceTree = BUILT_PRODUCTS_DIR; };
-  B00000000000000000000008 = { isa = PBXGroup; children = (B00000000000000000000004, B00000000000000000000005, B00000000000000000000006, B00000000000000000000015, B00000000000000000000017, B00000000000000000000009); sourceTree = "<group>"; };
+  B00000000000000000000008 = { isa = PBXGroup; children = (B00000000000000000000004, B00000000000000000000005, B00000000000000000000006, B00000000000000000000015, B00000000000000000000017, B00000000000000000000019, B00000000000000000000009); sourceTree = "<group>"; };
   B00000000000000000000009 = { isa = PBXGroup; children = (B00000000000000000000007); name = Products; sourceTree = "<group>"; };
-  B0000000000000000000000A = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (B00000000000000000000001, B00000000000000000000002, B00000000000000000000003, B00000000000000000000014, B00000000000000000000016); runOnlyForDeploymentPostprocessing = 0; };
+  B0000000000000000000000A = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (B00000000000000000000001, B00000000000000000000002, B00000000000000000000003, B00000000000000000000014, B00000000000000000000016, B00000000000000000000018); runOnlyForDeploymentPostprocessing = 0; };
   B0000000000000000000000B = { isa = PBXNativeTarget; buildConfigurationList = B0000000000000000000000E; buildPhases = (B0000000000000000000000A); buildRules = (); dependencies = (); name = VectorDivide; productName = VectorDivide; productReference = B00000000000000000000007; productType = "com.apple.product-type.application"; };
   B0000000000000000000000C = {
    isa = PBXProject;
